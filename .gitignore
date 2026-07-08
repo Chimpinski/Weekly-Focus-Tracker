@@ -10,6 +10,6 @@ desktop.ini
 # Node / Capacitor build output (generated on CI)
 node_modules/
 www/
-ios/
+/ios/
 dist/
 *.ipa
