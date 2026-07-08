@@ -19,7 +19,9 @@ Toggle between the two progress styles and light/dark themes right from the head
 - **Weekly summary** — a combined view of total time logged vs. planned across all objectives.
 - **Automatic weekly reset** — goals stay, logged time zeroes out every Monday.
 - **Local & private** — all data is stored in your browser via `localStorage`. Nothing is sent anywhere.
-- **Light & dark themes** — follows your system preference.
+- **First-run setup** — asks your name and walks you through creating your first objective, then greets you by name.
+- **Settings** — change your name, theme (system / light / dark), and progress style (bar or ring) from the gear menu.
+- **Installable** — works as a full-screen home-screen app on iOS/Android (PWA), and every [release](https://github.com/Chimpinski/Weekly-Focus-Tracker/releases) ships an unsigned `.ipa` for sideloading.
 
 ## Live app
 

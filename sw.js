@@ -1,5 +1,5 @@
 // Weekly Focus Timer — offline service worker
-const CACHE = "wft-v1";
+const CACHE = "wft-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -26,17 +26,35 @@ self.addEventListener("activate", function (event) {
   );
 });
 
-// Cache-first: the app is a single static page, so serve from cache and
-// fall back to the network (updating the cache) when something is missing.
 self.addEventListener("fetch", function (event) {
-  if (event.request.method !== "GET") return;
+  var req = event.request;
+  if (req.method !== "GET") return;
+  var isNavigation = req.mode === "navigate" ||
+    (req.headers.get("accept") || "").indexOf("text/html") !== -1;
+
+  if (isNavigation) {
+    // Network-first for the page itself, so updates always show when online;
+    // fall back to the cached copy when offline.
+    event.respondWith(
+      fetch(req).then(function (res) {
+        var copy = res.clone();
+        caches.open(CACHE).then(function (c) { c.put("./index.html", copy); });
+        return res;
+      }).catch(function () {
+        return caches.match(req).then(function (m) { return m || caches.match("./index.html"); });
+      })
+    );
+    return;
+  }
+
+  // Cache-first for static assets (icons, manifest), updating in the background.
   event.respondWith(
-    caches.match(event.request).then(function (cached) {
+    caches.match(req).then(function (cached) {
       if (cached) return cached;
-      return fetch(event.request).then(function (res) {
-        if (res && res.ok && new URL(event.request.url).origin === self.location.origin) {
+      return fetch(req).then(function (res) {
+        if (res && res.ok && new URL(req.url).origin === self.location.origin) {
           var copy = res.clone();
-          caches.open(CACHE).then(function (c) { c.put(event.request, copy); });
+          caches.open(CACHE).then(function (c) { c.put(req, copy); });
         }
         return res;
       });

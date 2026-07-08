@@ -8,6 +8,9 @@ on:
   push:
     tags: ["v*"]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-14
@@ -39,6 +42,8 @@ jobs:
 
       - name: Build unsigned .app
         run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then MV="${GITHUB_REF_NAME#v}"; else MV="1.1.0"; fi
+          echo "Marketing version: $MV"
           cd ios/App
           xcodebuild \
             -workspace App.xcworkspace \
@@ -46,6 +51,8 @@ jobs:
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath build \
+            MARKETING_VERSION="$MV" \
+            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -71,3 +78,18 @@ jobs:
           name: WeeklyFocusTimer-unsigned-ipa
           path: dist/WeeklyFocusTimer-unsigned.ipa
           if-no-files-found: error
+
+      - name: Attach IPA to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }} — Weekly Focus Timer
+          files: dist/WeeklyFocusTimer-unsigned.ipa
+          fail_on_unmatched_files: true
+          body: |
+            Unsigned `.ipa` for personal sideloading (AltStore / Sideloadly sign it with your Apple ID at install time).
+
+            Bundle ID `com.chimpinski.weeklyfocus`. Min iOS 13.
+
+            Prefer no sideloading? The app is also a PWA — open
+            https://chimpinski.github.io/Weekly-Focus-Tracker/ in Safari and choose **Add to Home Screen**.

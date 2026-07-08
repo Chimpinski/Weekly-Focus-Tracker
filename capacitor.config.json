@@ -2,7 +2,8 @@
   "appId": "com.chimpinski.weeklyfocus",
   "appName": "Focus Timer",
   "webDir": "www",
+  "backgroundColor": "#101615",
   "ios": {
-    "contentInset": "always"
+    "contentInset": "never"
   }
 }
