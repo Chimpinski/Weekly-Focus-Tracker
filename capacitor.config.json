@@ -1,0 +1,8 @@
+{
+  "appId": "com.chimpinski.weeklyfocus",
+  "appName": "Focus Timer",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "always"
+  }
+}

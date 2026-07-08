@@ -1,0 +1,73 @@
+name: Build unsigned IPA
+
+# Produces an UNSIGNED .ipa you can download and sideload (AltStore / Sideloadly).
+# Run it manually from the Actions tab, or by pushing a tag like v1.0.0.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Assemble web assets into www/
+        run: |
+          mkdir -p www
+          cp index.html manifest.webmanifest sw.js icon-192.png icon-512.png apple-touch-icon.png www/
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Add iOS platform
+        run: npx cap add ios
+
+      - name: Generate native app icons
+        run: npx capacitor-assets generate --ios --iconBackgroundColor "#101615" --iconBackgroundColorDark "#101615" || echo "icon generation skipped"
+
+      - name: Sync web assets to iOS
+        run: npx cap sync ios
+
+      - name: Build unsigned .app
+        run: |
+          cd ios/App
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package into unsigned .ipa
+        run: |
+          APP_DIR="ios/App/build/Build/Products/Release-iphoneos"
+          if [ ! -d "$APP_DIR/App.app" ]; then
+            echo "App.app not found in $APP_DIR"; ls -la "$APP_DIR" || true; exit 1
+          fi
+          cd "$APP_DIR"
+          mkdir -p Payload
+          cp -R App.app Payload/
+          zip -qry app.ipa Payload
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          mv app.ipa "$GITHUB_WORKSPACE/dist/WeeklyFocusTimer-unsigned.ipa"
+          echo "Built:"; ls -la "$GITHUB_WORKSPACE/dist"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WeeklyFocusTimer-unsigned-ipa
+          path: dist/WeeklyFocusTimer-unsigned.ipa
+          if-no-files-found: error

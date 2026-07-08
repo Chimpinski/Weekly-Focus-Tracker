@@ -6,3 +6,10 @@ desktop.ini
 # Claude Code local settings
 .claude/settings.local.json
 .claude/launch.json
+
+# Node / Capacitor build output (generated on CI)
+node_modules/
+www/
+ios/
+dist/
+*.ipa

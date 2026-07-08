@@ -666,6 +666,13 @@
 
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
+  var EXAMPLE_TITLES = [
+    "Linear Algebra course", "Spanish practice", "Guitar practice",
+    "Deep reading", "Thesis writing", "Gym training", "Piano practice",
+    "Side project", "Meditation", "Job applications", "LeetCode prep",
+    "Course lectures", "Sketching", "Language flashcards", "Research paper"
+  ];
+
   // ── Week helpers (weeks start Monday) ──
   function mondayOf(d) {
     var m = new Date(d);
@@ -1162,6 +1169,7 @@
   var overlay = document.getElementById("modal-overlay");
   function openModal() {
     overlay.hidden = false;
+    document.getElementById("add-name").placeholder = "e.g. " + pick(EXAMPLE_TITLES);
     document.getElementById("add-hours").value = "5";
     document.getElementById("add-mins").value = "0";
     setTimeout(function () { document.getElementById("add-name").focus(); }, 0);
