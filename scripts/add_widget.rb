@@ -19,6 +19,8 @@ build_num = ENV['GITHUB_RUN_NUMBER'] || '1'
 widget = proj.new_target(:app_extension, 'WeeklyWidget', :ios, '17.0')
 widget.build_configurations.each do |c|
   bs = c.build_settings
+  bs['PRODUCT_NAME'] = 'WeeklyWidget'
+  bs['PRODUCT_MODULE_NAME'] = 'WeeklyWidget'
   bs['PRODUCT_BUNDLE_IDENTIFIER'] = 'com.chimpinski.weeklyfocus.widget'
   bs['INFOPLIST_FILE'] = 'WeeklyWidget/Info.plist'
   bs['GENERATE_INFOPLIST_FILE'] = 'NO'
