@@ -33,6 +33,8 @@ Toggle between the two progress styles and light/dark themes from Settings, and 
 
 Open it in any modern browser — no build step, no dependencies. You can also just open `index.html` from disk.
 
+See [CHANGELOG.md](CHANGELOG.md) for what's new in each version.
+
 ## Install on your iPhone (or Android)
 
 Two ways to get it on your phone:
