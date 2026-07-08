@@ -100,6 +100,7 @@
   }
 
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html { background: var(--bg); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   body {
     margin: 0;
@@ -514,6 +515,41 @@
   .settings-actions { margin-top: 18px; }
   .settings-actions .btn-primary { width: 100%; justify-content: center; padding: 13px; font-size: 16px; }
 
+  /* ── Sync ── */
+  .sync-box { display: flex; flex-direction: column; gap: 10px; }
+  .sync-hint { font-size: 12px; color: var(--faint); margin: 0; line-height: 1.45; }
+  .sync-error { font-size: 13px; color: var(--danger); margin: 0; font-weight: 600; }
+  .sync-code-row { display: flex; gap: 8px; align-items: stretch; }
+  .sync-code-row code {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 10px;
+    padding: 11px 10px;
+    user-select: all;
+    -webkit-user-select: all;
+  }
+  .sync-code-row input { flex: 1; min-width: 0; }
+  #sync-enter-form { display: flex; flex-direction: column; gap: 10px; }
+  #onboard-sync-form { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .link-btn {
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    padding: 6px 0;
+    text-align: left;
+  }
+  .link-btn:hover { color: var(--accent); }
+
   /* ── First-run onboarding ── */
   .onboard {
     position: fixed;
@@ -747,6 +783,31 @@
           <button type="button" class="seg-wide-btn" data-progress-val="ring">Ring</button>
         </div>
       </div>
+      <div class="setting-field">
+        <span class="setting-label">Sync between devices</span>
+        <div class="sync-box" id="sync-off">
+          <p class="sync-hint">See the same timers on your phone and PC — no account needed. Create a code on one device, then enter it on the other.</p>
+          <div class="form-actions">
+            <button class="btn-secondary" type="button" id="sync-create">Create sync code</button>
+            <button class="btn-secondary" type="button" id="sync-enter-toggle">Enter a code</button>
+          </div>
+          <form id="sync-enter-form" hidden>
+            <input type="text" id="sync-code-input" placeholder="WFT-XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false">
+            <button class="btn-primary" type="submit">Connect</button>
+            <p class="sync-error" id="sync-enter-error" hidden></p>
+            <p class="sync-hint">Connecting replaces this device's data with the synced data.</p>
+          </form>
+        </div>
+        <div class="sync-box" id="sync-on" hidden>
+          <div class="sync-code-row">
+            <code id="sync-code-display"></code>
+            <button class="btn-secondary" type="button" id="sync-copy">Copy</button>
+          </div>
+          <p class="sync-hint" id="sync-status-line">Syncing…</p>
+          <p class="sync-hint">Enter this code on your other device to see the same timers there. Anyone with the code can see and change your data, so keep it to yourself.</p>
+          <button class="btn-ghost" type="button" id="sync-stop">Stop syncing on this device</button>
+        </div>
+      </div>
     </div>
     <div class="form-actions settings-actions">
       <button class="btn-primary" type="button" id="settings-done">Done</button>
@@ -770,6 +831,14 @@
         <li><strong>Watch your progress</strong> climb toward your weekly goal, shown as a bar or a ring.</li>
       </ol>
       <button class="btn-primary onboard-cta" type="submit">Get started</button>
+    </form>
+    <button type="button" class="link-btn" id="onboard-sync-link">Already using this app on another device? Enter your sync code</button>
+    <form id="onboard-sync-form" hidden>
+      <div class="sync-code-row">
+        <input type="text" id="onboard-sync-input" placeholder="WFT-XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false">
+        <button class="btn-secondary" type="submit">Connect</button>
+      </div>
+      <p class="sync-error" id="onboard-sync-error" hidden></p>
     </form>
   </div>
 </div>
@@ -817,8 +886,9 @@
 
   // ── Persistence ──
   function save() {
+    state.updatedAt = Math.max(Date.now(), (state.updatedAt || 0) + 1); // monotonic for last-write-wins sync
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* private mode */ }
-    syncLiveActivity();
+    schedulePush();
   }
   function load() {
     try {
@@ -886,7 +956,6 @@
         pauseObjective(o); // one task at a time
       }
     });
-    state.lastActiveId = id;
     save();
     render();
   }
@@ -1482,77 +1551,195 @@
     setGreeting();
   });
 
-  // ── iOS Live Activity bridge (no-op on the web; active only inside the native app) ──
-  function nativePlugin() {
-    try {
-      if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
-        return (window.Capacitor.Plugins && window.Capacitor.Plugins.LiveTimer) || null;
-      }
-    } catch (e) {}
-    return null;
-  }
+  // ── Cross-device sync (no account: the sync code is the secret key) ──
+  var SYNC_BASE = "https://textdb.online/";
+  var syncPushTimer = null;
+  var syncLastOk = null;
+  var syncError = false;
 
-  function syncLiveActivity() {
-    var p = nativePlugin();
-    if (!p) return;
-    try {
-      var running = state.objectives.filter(function (o) { return o.running; })[0];
-      if (running) {
-        p.sync({
-          running: true,
-          id: running.id,
-          name: running.name,
-          remainingSeconds: Math.max(0, running.goalSeconds - liveSpent(running)),
-          goalSeconds: running.goalSeconds
-        });
-      } else {
-        p.sync({ running: false });
-      }
-    } catch (e) { /* never let the bridge break the app */ }
+  function getSyncCode() {
+    try { return localStorage.getItem("wft-sync-code") || null; } catch (e) { return null; }
   }
-
-  // Apply pause/resume presses made in the Live Activity, at their exact timestamps.
-  function consumeNativeActions() {
-    var p = nativePlugin();
-    if (!p) return;
+  function setSyncCode(code) {
     try {
-      p.consumeActions().then(function (res) {
-        var actions = (res && res.actions) || [];
-        if (!actions.length) return;
-        var changed = false;
-        actions.forEach(function (a) {
-          var at = (typeof a.at === "number" && a.at > 0) ? a.at : Date.now();
-          if (a.action === "pause") {
-            var running = state.objectives.filter(function (o) { return o.running; })[0];
-            if (running && running.startedAt) {
-              var effective = Math.max(running.startedAt, at);
-              running.spentSeconds += Math.max(0, (effective - running.startedAt) / 1000);
-              running.running = false;
-              running.startedAt = null;
-              changed = true;
-            }
-          } else if (a.action === "resume") {
-            var target = byId(state.lastActiveId);
-            if (target && !target.running) {
-              target.running = true;
-              target.startedAt = at;
-              changed = true;
-            }
-          }
-        });
-        if (changed) { save(); render(); }
-      }).catch(function () {});
+      if (code) localStorage.setItem("wft-sync-code", code);
+      else localStorage.removeItem("wft-sync-code");
     } catch (e) {}
   }
+  function syncKeyFromCode(code) {
+    return "wft" + code.replace(/[^a-z0-9]/gi, "").toLowerCase();
+  }
+  function genSyncCode() {
+    var alpha = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O/1/I/L confusables
+    var buf = new Uint8Array(12);
+    if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(buf);
+    else for (var j = 0; j < 12; j++) buf[j] = Math.floor(Math.random() * 256);
+    var chars = [];
+    for (var i = 0; i < 12; i++) chars.push(alpha[buf[i] % alpha.length]);
+    return "WFT-" + chars.slice(0, 4).join("") + "-" + chars.slice(4, 8).join("") + "-" + chars.slice(8, 12).join("");
+  }
 
-  (function initNativeBridge() {
-    var p = nativePlugin();
-    if (!p) return;
-    // Widget button pressed while the app is awake → apply immediately.
-    if (p.addListener) {
-      try { p.addListener("timerAction", function () { consumeNativeActions(); }); } catch (e) {}
+  function syncOk() { syncError = false; syncLastOk = Date.now(); updateSyncUI(); }
+  function syncFail() { syncError = true; updateSyncUI(); }
+
+  function schedulePush() {
+    if (!getSyncCode()) return;
+    clearTimeout(syncPushTimer);
+    syncPushTimer = setTimeout(pushRemote, 1200);
+  }
+  function pushRemote() {
+    var code = getSyncCode();
+    if (!code) return;
+    var body = new URLSearchParams();
+    body.append("key", syncKeyFromCode(code));
+    body.append("value", JSON.stringify(state));
+    // Form-encoded POST: a CORS "simple request", no preflight needed.
+    return fetch(SYNC_BASE + "update", { method: "POST", body: body })
+      .then(function (r) { if (!r.ok) throw new Error("push " + r.status); syncOk(); })
+      .catch(function () { syncFail(); });
+  }
+  function pullRemote(done) {
+    var code = getSyncCode();
+    if (!code) { if (done) done(false); return; }
+    fetch(SYNC_BASE + syncKeyFromCode(code), { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("pull " + r.status); return r.text(); })
+      .then(function (txt) {
+        txt = (txt || "").trim();
+        var remote = null;
+        if (txt) { try { remote = JSON.parse(txt); } catch (e) {} }
+        if (!remote || !Array.isArray(remote.objectives)) {
+          // Remote empty or unreadable: seed it with our data.
+          schedulePush(); syncOk(); if (done) done(false); return;
+        }
+        if ((remote.updatedAt || 0) > (state.updatedAt || 0)) {
+          adoptRemoteState(remote);
+          if (done) done(true);
+        } else if ((remote.updatedAt || 0) < (state.updatedAt || 0)) {
+          schedulePush();
+          if (done) done(false);
+        } else if (done) { done(false); }
+        syncOk();
+      })
+      .catch(function () { syncFail(); if (done) done(false); });
+  }
+  function adoptRemoteState(remote) {
+    state = remote;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+    checkRollover();
+    setGreeting();
+    render();
+  }
+
+  // Connect this device to an existing code (adopts the synced data).
+  function connectWithCode(rawCode, onResult) {
+    var code = (rawCode || "").trim().toUpperCase();
+    if (code.replace(/[^A-Z0-9]/g, "").length < 8) {
+      onResult("That doesn't look like a sync code."); return;
     }
-  })();
+    fetch(SYNC_BASE + syncKeyFromCode(code), { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.text(); })
+      .then(function (txt) {
+        var remote = null;
+        try { remote = JSON.parse((txt || "").trim()); } catch (e) {}
+        if (!remote || !Array.isArray(remote.objectives)) {
+          onResult("Code not found. Create it on your other device first, then try again.");
+          return;
+        }
+        setSyncCode(code);
+        adoptRemoteState(remote);
+        syncOk();
+        onResult(null);
+      })
+      .catch(function () {
+        onResult("Couldn't reach the sync server. Check your connection and try again.");
+      });
+  }
+
+  function createSyncCode() {
+    var code = genSyncCode();
+    setSyncCode(code);
+    state.updatedAt = Math.max(Date.now(), (state.updatedAt || 0) + 1);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+    pushRemote();
+    updateSyncUI();
+    return code;
+  }
+
+  function updateSyncUI() {
+    var code = getSyncCode();
+    var off = document.getElementById("sync-off");
+    var on = document.getElementById("sync-on");
+    if (!off || !on) return;
+    off.hidden = !!code;
+    on.hidden = !code;
+    if (code) {
+      document.getElementById("sync-code-display").textContent = code;
+      var line = document.getElementById("sync-status-line");
+      if (syncError) {
+        line.textContent = "Can't reach the sync server — will keep retrying.";
+      } else if (syncLastOk) {
+        line.textContent = "Synced " + new Date(syncLastOk).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      } else {
+        line.textContent = "Syncing…";
+      }
+    }
+  }
+
+  // ── Sync UI wiring (settings) ──
+  document.getElementById("sync-create").addEventListener("click", function () {
+    createSyncCode();
+  });
+  var enterForm = document.getElementById("sync-enter-form");
+  document.getElementById("sync-enter-toggle").addEventListener("click", function () {
+    enterForm.hidden = !enterForm.hidden;
+    if (!enterForm.hidden) document.getElementById("sync-code-input").focus();
+  });
+  enterForm.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var err = document.getElementById("sync-enter-error");
+    err.hidden = true;
+    connectWithCode(document.getElementById("sync-code-input").value, function (e) {
+      if (e) { err.textContent = e; err.hidden = false; return; }
+      document.getElementById("sync-code-input").value = "";
+      enterForm.hidden = true;
+      updateSyncUI();
+    });
+  });
+  document.getElementById("sync-copy").addEventListener("click", function () {
+    var code = getSyncCode();
+    if (!code) return;
+    var btn = this;
+    function flash() { btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy"; }, 1400); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(flash).catch(function () {});
+    }
+  });
+  document.getElementById("sync-stop").addEventListener("click", function () {
+    setSyncCode(null);
+    syncLastOk = null;
+    syncError = false;
+    updateSyncUI();
+  });
+
+  // ── Sync UI wiring (onboarding) ──
+  document.getElementById("onboard-sync-link").addEventListener("click", function () {
+    var f = document.getElementById("onboard-sync-form");
+    f.hidden = !f.hidden;
+    if (!f.hidden) document.getElementById("onboard-sync-input").focus();
+  });
+  document.getElementById("onboard-sync-form").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var err = document.getElementById("onboard-sync-error");
+    err.hidden = true;
+    connectWithCode(document.getElementById("onboard-sync-input").value, function (e) {
+      if (e) { err.textContent = e; err.hidden = false; return; }
+      if (state.userName && state.userName.trim()) {
+        document.getElementById("onboard").hidden = true;
+        setGreeting();
+      }
+      updateSyncUI();
+    });
+  });
 
   // ── Boot ──
   load();
@@ -1561,11 +1748,12 @@
   setMotiv();
   render();
   maybeOnboard();
-  consumeNativeActions(); // apply any pause/resume made from the Live Activity while we were closed
-  syncLiveActivity();
+  updateSyncUI();
+  pullRemote();
   setInterval(tick, 1000);
+  setInterval(function () { if (!document.hidden) pullRemote(); }, 45000);
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) { checkRollover(); consumeNativeActions(); render(); }
+    if (!document.hidden) { checkRollover(); pullRemote(); render(); }
   });
 })();
 </script>

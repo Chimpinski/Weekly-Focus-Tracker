@@ -18,7 +18,8 @@ Toggle between the two progress styles and light/dark themes right from the head
 - **Live progress** — each objective shows a countdown of remaining time, percentage of goal, and a progress bar that turns green when the goal is met.
 - **Weekly summary** — a combined view of total time logged vs. planned across all objectives.
 - **Automatic weekly reset** — goals stay, logged time zeroes out every Monday.
-- **Local & private** — all data is stored in your browser via `localStorage`. Nothing is sent anywhere.
+- **Local & private** — all data is stored in your browser via `localStorage`. Nothing is sent anywhere unless you turn on sync.
+- **Cross-device sync, no account** — create a sync code on one device and enter it on another; both show the same timers (even a running one). The code is the only key to your data, so treat it like a password.
 - **First-run setup** — asks your name and walks you through creating your first objective, then greets you by name.
 - **Settings** — change your name, theme (system / light / dark), and progress style (bar or ring) from the gear menu.
 - **Installable** — works as a full-screen home-screen app on iOS/Android (PWA), and every [release](https://github.com/Chimpinski/Weekly-Focus-Tracker/releases) ships an unsigned `.ipa` for sideloading.
