@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Track time spent on your objectives against weekly goals with per-task timers, manual logging, and progress bars.">
+<meta name="color-scheme" content="light dark">
+<title>Weekly Focus Timer</title>
+<style>
+  :root {
+    --bg: #f4f7f6;
+    --surface: #ffffff;
+    --surface-2: #ecf1f0;
+    --ink: #1a2422;
+    --muted: #5c6b67;
+    --faint: #8fa09b;
+    --accent: #0e7c6f;
+    --accent-ink: #ffffff;
+    --accent-soft: rgba(14, 124, 111, 0.12);
+    --track: #e0e8e6;
+    --line: #dde5e3;
+    --done: #2e7d32;
+    --danger: #b4552d;
+    --shadow: 0 1px 3px rgba(26, 36, 34, 0.08), 0 4px 16px rgba(26, 36, 34, 0.05);
+    --running-glow: 0 0 0 2px var(--accent), 0 4px 20px rgba(14, 124, 111, 0.25);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101615;
+      --surface: #1a2321;
+      --surface-2: #222d2a;
+      --ink: #e8eeec;
+      --muted: #93a39e;
+      --faint: #64756f;
+      --accent: #3fbfa9;
+      --accent-ink: #0c1614;
+      --accent-soft: rgba(63, 191, 169, 0.14);
+      --track: #2a3634;
+      --line: #2a3634;
+      --done: #66bb6a;
+      --danger: #e0805a;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.25);
+      --running-glow: 0 0 0 2px var(--accent), 0 4px 20px rgba(63, 191, 169, 0.2);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f7f6;
+    --surface: #ffffff;
+    --surface-2: #ecf1f0;
+    --ink: #1a2422;
+    --muted: #5c6b67;
+    --faint: #8fa09b;
+    --accent: #0e7c6f;
+    --accent-ink: #ffffff;
+    --accent-soft: rgba(14, 124, 111, 0.12);
+    --track: #e0e8e6;
+    --line: #dde5e3;
+    --done: #2e7d32;
+    --danger: #b4552d;
+    --shadow: 0 1px 3px rgba(26, 36, 34, 0.08), 0 4px 16px rgba(26, 36, 34, 0.05);
+    --running-glow: 0 0 0 2px var(--accent), 0 4px 20px rgba(14, 124, 111, 0.25);
+  }
+  :root[data-theme="dark"] {
+    --bg: #101615;
+    --surface: #1a2321;
+    --surface-2: #222d2a;
+    --ink: #e8eeec;
+    --muted: #93a39e;
+    --faint: #64756f;
+    --accent: #3fbfa9;
+    --accent-ink: #0c1614;
+    --accent-soft: rgba(63, 191, 169, 0.14);
+    --track: #2a3634;
+    --line: #2a3634;
+    --done: #66bb6a;
+    --danger: #e0805a;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.25);
+    --running-glow: 0 0 0 2px var(--accent), 0 4px 20px rgba(63, 191, 169, 0.2);
+  }
+
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", system-ui, Roboto, "Helvetica Neue", sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 28px 20px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ── Header ── */
+  header .eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 4px;
+  }
+  header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  header .week-range { color: var(--muted); margin: 2px 0 0; font-size: 14px; }
+
+  /* ── Week summary ── */
+  .summary {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .summary .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .summary .label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .summary .totals {
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .summary .totals strong { color: var(--ink); font-weight: 600; }
+  .summary .pct {
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  /* ── Progress bars ── */
+  .bar {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--track);
+    overflow: hidden;
+  }
+  .bar > i {
+    display: block;
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: var(--accent);
+    transition: width 0.4s ease;
+  }
+  .bar > i.full { background: var(--done); }
+  @media (prefers-reduced-motion: reduce) {
+    .bar > i { transition: none; }
+  }
+
+  /* ── Objective cards ── */
+  .cards { display: flex; flex-direction: column; gap: 14px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card.running { box-shadow: var(--running-glow); border-color: transparent; }
+
+  .card .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .card h2 {
+    font-size: 17px;
+    font-weight: 650;
+    margin: 0;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+  }
+  .card .goal-note { color: var(--muted); font-size: 13px; margin: 1px 0 0; }
+  .card .icon-btns { display: flex; gap: 4px; flex-shrink: 0; }
+
+  .card .readout {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .card .remaining {
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 34px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+  }
+  .card .remaining .unit-label {
+    font-size: 12px;
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-left: 8px;
+  }
+  .card.goal-met .remaining { color: var(--done); }
+  .card .pct-chip {
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 999px;
+    padding: 3px 10px;
+  }
+  .card.goal-met .pct-chip { color: var(--done); }
+
+  .card .spent-line {
+    font-size: 13px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .card .actions { display: flex; gap: 10px; align-items: center; }
+
+  /* ── Buttons ── */
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: none;
+    border-radius: 9px;
+    transition: filter 0.15s ease, background 0.15s ease;
+  }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 600;
+    font-size: 15px;
+    padding: 10px 22px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-primary svg { flex-shrink: 0; }
+
+  .btn-pause {
+    background: var(--surface-2);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    font-weight: 600;
+    font-size: 15px;
+    padding: 9px 22px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-pause:hover { background: var(--track); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    padding: 6px 8px;
+    font-size: 13px;
+    border-radius: 7px;
+  }
+  .btn-ghost:hover { background: var(--surface-2); color: var(--ink); }
+  .btn-ghost.danger-armed { color: var(--danger); font-weight: 600; }
+
+  .running-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  @media (prefers-reduced-motion: reduce) { .running-dot { animation: none; } }
+  .running-label { font-size: 13px; font-weight: 600; color: var(--accent); display: inline-flex; align-items: center; gap: 7px; }
+
+  /* ── Add / edit forms ── */
+  .add-card {
+    background: transparent;
+    border: 1.5px dashed var(--line);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .add-card > button.btn-open {
+    width: 100%;
+    background: transparent;
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 14px;
+    padding: 6px;
+  }
+  .add-card > button.btn-open:hover { color: var(--accent); }
+
+  form.obj-form { display: flex; flex-direction: column; gap: 12px; }
+  form.obj-form .fields { display: flex; gap: 10px; flex-wrap: wrap; }
+  form.obj-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  form.obj-form label.grow { flex: 1 1 200px; }
+  form.obj-form input {
+    font: inherit;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 11px;
+    letter-spacing: normal;
+    text-transform: none;
+    font-weight: 400;
+  }
+  form.obj-form input[type="number"] { width: 90px; font-variant-numeric: tabular-nums; }
+  form.obj-form input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+  form.obj-form .form-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ── Manual log form ── */
+  form.log-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px;
+    margin-top: 2px;
+  }
+  form.log-form .log-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  form.log-form .fields { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  form.log-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  form.log-form input {
+    font: inherit;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    letter-spacing: normal;
+    text-transform: none;
+    font-weight: 400;
+    width: 84px;
+    font-variant-numeric: tabular-nums;
+  }
+  form.log-form input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+  form.log-form .form-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  form.log-form .btn-primary { padding: 8px 18px; font-size: 14px; }
+  form.log-form .log-hint { font-size: 12px; color: var(--faint); margin: 0; }
+  .btn-secondary {
+    background: var(--surface-2);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    font-weight: 600;
+    font-size: 14px;
+    padding: 8px 16px;
+  }
+  .btn-secondary:hover { background: var(--track); }
+  .form-hint { font-size: 12px; color: var(--faint); margin: 0; }
+
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 30px 16px;
+    font-size: 14px;
+  }
+  .empty strong { color: var(--ink); }
+
+  footer { text-align: center; font-size: 12px; color: var(--faint); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Weekly Focus Timer</p>
+    <h1>Your objectives this week</h1>
+    <p class="week-range" id="week-range"></p>
+  </header>
+
+  <section class="summary" id="summary" hidden>
+    <div class="row">
+      <span class="label">Week total</span>
+      <span class="pct" id="sum-pct">0%</span>
+    </div>
+    <div class="bar"><i id="sum-bar"></i></div>
+    <div class="row">
+      <span class="totals" id="sum-totals"></span>
+    </div>
+  </section>
+
+  <section class="cards" id="cards"></section>
+
+  <section class="add-card" id="add-card">
+    <button class="btn-open" id="btn-show-add" type="button">+ Add an objective</button>
+    <form class="obj-form" id="add-form" hidden>
+      <div class="fields">
+        <label class="grow">Objective
+          <input type="text" id="add-name" placeholder="e.g. Linear Algebra course" maxlength="80" required>
+        </label>
+        <label>Hours / week
+          <input type="number" id="add-hours" min="0" max="120" step="1" value="5">
+        </label>
+        <label>Minutes
+          <input type="number" id="add-mins" min="0" max="59" step="5" value="0">
+        </label>
+      </div>
+      <div class="form-actions">
+        <button class="btn-primary" type="submit">Add objective</button>
+        <button class="btn-secondary" type="button" id="btn-cancel-add">Cancel</button>
+      </div>
+      <p class="form-hint">Set the total time you want to spend on this during the week. Goals reset every Monday.</p>
+    </form>
+  </section>
+
+  <footer>Time is saved automatically in this browser. Progress resets each Monday.</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "weekly-focus-timer-v1";
+  var state = { weekStart: null, objectives: [] };
+
+  // ── Week helpers (weeks start Monday) ──
+  function mondayOf(d) {
+    var m = new Date(d);
+    m.setHours(0, 0, 0, 0);
+    var shift = (m.getDay() + 6) % 7; // Mon=0 … Sun=6
+    m.setDate(m.getDate() - shift);
+    return m;
+  }
+  function weekKey(d) {
+    var m = mondayOf(d);
+    return m.getFullYear() + "-" + String(m.getMonth() + 1).padStart(2, "0") + "-" + String(m.getDate()).padStart(2, "0");
+  }
+  function weekRangeLabel() {
+    var start = mondayOf(new Date());
+    var end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    var opts = { month: "short", day: "numeric" };
+    return "Week of " + start.toLocaleDateString(undefined, opts) + " – " + end.toLocaleDateString(undefined, opts);
+  }
+
+  // ── Persistence ──
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* private mode */ }
+  }
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.objectives)) state = parsed;
+      }
+    } catch (e) { /* corrupted or unavailable — start fresh */ }
+    if (!state.weekStart) state.weekStart = weekKey(new Date());
+  }
+
+  // ── Weekly rollover: finalize timers, zero out logged time ──
+  function checkRollover() {
+    var current = weekKey(new Date());
+    if (state.weekStart === current) return false;
+    state.objectives.forEach(function (o) {
+      o.spentSeconds = 0;
+      if (o.running) { o.startedAt = Date.now(); } // running timer carries into the new week from zero
+    });
+    state.weekStart = current;
+    save();
+    return true;
+  }
+
+  // ── Time math ──
+  function liveSpent(o) {
+    var s = o.spentSeconds;
+    if (o.running && o.startedAt) s += Math.max(0, (Date.now() - o.startedAt) / 1000);
+    return s;
+  }
+  function fmtClock(totalSeconds) {
+    totalSeconds = Math.max(0, Math.round(totalSeconds));
+    var h = Math.floor(totalSeconds / 3600);
+    var m = Math.floor((totalSeconds % 3600) / 60);
+    var s = totalSeconds % 60;
+    return h + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+  }
+  function fmtShort(totalSeconds) {
+    totalSeconds = Math.max(0, Math.round(totalSeconds));
+    var h = Math.floor(totalSeconds / 3600);
+    var m = Math.round((totalSeconds % 3600) / 60);
+    if (m === 60) { h += 1; m = 0; }
+    if (h > 0 && m > 0) return h + "h " + m + "m";
+    if (h > 0) return h + "h";
+    return m + "m";
+  }
+  function pctOf(o) {
+    if (o.goalSeconds <= 0) return 0;
+    return (liveSpent(o) / o.goalSeconds) * 100;
+  }
+
+  // ── Actions ──
+  function pauseObjective(o) {
+    if (!o.running) return;
+    o.spentSeconds += Math.max(0, (Date.now() - o.startedAt) / 1000);
+    o.running = false;
+    o.startedAt = null;
+  }
+  function beginTask(id) {
+    state.objectives.forEach(function (o) {
+      if (o.id === id) {
+        if (!o.running) { o.running = true; o.startedAt = Date.now(); }
+      } else {
+        pauseObjective(o); // one task at a time
+      }
+    });
+    save();
+    render();
+  }
+  function pauseTask(id) {
+    var o = byId(id);
+    if (o) { pauseObjective(o); save(); render(); }
+  }
+  function deleteObjective(id) {
+    state.objectives = state.objectives.filter(function (o) { return o.id !== id; });
+    save();
+    render();
+  }
+  function byId(id) {
+    for (var i = 0; i < state.objectives.length; i++) {
+      if (state.objectives[i].id === id) return state.objectives[i];
+    }
+    return null;
+  }
+
+  // ── Rendering ──
+  var cardsEl = document.getElementById("cards");
+  var editingId = null;
+  var loggingId = null;
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function playIcon() {
+    var s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    s.setAttribute("width", "13"); s.setAttribute("height", "13");
+    s.setAttribute("viewBox", "0 0 16 16"); s.setAttribute("aria-hidden", "true");
+    var p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", "M4 2.5 L13 8 L4 13.5 Z");
+    p.setAttribute("fill", "currentColor");
+    s.appendChild(p);
+    return s;
+  }
+  function pauseIcon() {
+    var s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    s.setAttribute("width", "13"); s.setAttribute("height", "13");
+    s.setAttribute("viewBox", "0 0 16 16"); s.setAttribute("aria-hidden", "true");
+    ["3", "9.5"].forEach(function (x) {
+      var r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      r.setAttribute("x", x); r.setAttribute("y", "2.5");
+      r.setAttribute("width", "3.5"); r.setAttribute("height", "11");
+      r.setAttribute("rx", "1"); r.setAttribute("fill", "currentColor");
+      s.appendChild(r);
+    });
+    return s;
+  }
+
+  function renderCard(o) {
+    var card = el("article", "card");
+    card.dataset.id = o.id;
+    if (o.running) card.classList.add("running");
+
+    if (editingId === o.id) {
+      card.appendChild(renderEditForm(o));
+      return card;
+    }
+
+    var spent = liveSpent(o);
+    var remaining = o.goalSeconds - spent;
+    var pct = pctOf(o);
+    var goalMet = remaining <= 0;
+    if (goalMet) card.classList.add("goal-met");
+
+    // Top row: name + edit/delete
+    var top = el("div", "top");
+    var titleWrap = el("div");
+    titleWrap.appendChild(el("h2", null, o.name));
+    titleWrap.appendChild(el("p", "goal-note", "Weekly goal: " + fmtShort(o.goalSeconds)));
+    top.appendChild(titleWrap);
+
+    var btns = el("div", "icon-btns");
+    var editBtn = el("button", "btn-ghost", "Edit");
+    editBtn.type = "button";
+    editBtn.addEventListener("click", function () { editingId = o.id; deleteArmed = null; render(); });
+    var delBtn = el("button", "btn-ghost", deleteArmed === o.id ? "Really delete?" : "Delete");
+    delBtn.type = "button";
+    if (deleteArmed === o.id) delBtn.classList.add("danger-armed");
+    delBtn.addEventListener("click", function () {
+      if (deleteArmed === o.id) { deleteArmed = null; deleteObjective(o.id); }
+      else { deleteArmed = o.id; render(); }
+    });
+    btns.appendChild(editBtn);
+    btns.appendChild(delBtn);
+    top.appendChild(btns);
+    card.appendChild(top);
+
+    // Readout: remaining countdown + percent chip
+    var readout = el("div", "readout");
+    var rem = el("div", "remaining");
+    rem.setAttribute("data-role", "remaining");
+    rem.textContent = goalMet ? "Goal met" : fmtClock(remaining);
+    if (!goalMet) rem.appendChild(el("span", "unit-label", "left"));
+    readout.appendChild(rem);
+    var chip = el("span", "pct-chip", Math.floor(pct) + "% of goal");
+    chip.setAttribute("data-role", "pct");
+    readout.appendChild(chip);
+    card.appendChild(readout);
+
+    // Progress bar
+    var bar = el("div", "bar");
+    var fill = el("i");
+    fill.setAttribute("data-role", "bar");
+    fill.style.width = Math.min(100, pct) + "%";
+    if (pct >= 100) fill.classList.add("full");
+    bar.appendChild(fill);
+    card.appendChild(bar);
+
+    // Spent line
+    var spentLine = el("p", "spent-line");
+    spentLine.setAttribute("data-role", "spent");
+    spentLine.textContent = spentLineText(o);
+    card.appendChild(spentLine);
+
+    // Actions
+    var actions = el("div", "actions");
+    if (o.running) {
+      var pauseBtn = el("button", "btn-pause");
+      pauseBtn.type = "button";
+      pauseBtn.appendChild(pauseIcon());
+      pauseBtn.appendChild(document.createTextNode("Pause"));
+      pauseBtn.addEventListener("click", function () { pauseTask(o.id); });
+      actions.appendChild(pauseBtn);
+      var lbl = el("span", "running-label");
+      lbl.appendChild(el("span", "running-dot"));
+      lbl.appendChild(document.createTextNode("Tracking…"));
+      actions.appendChild(lbl);
+    } else {
+      var beginBtn = el("button", "btn-primary");
+      beginBtn.type = "button";
+      beginBtn.appendChild(playIcon());
+      beginBtn.appendChild(document.createTextNode(spent > 0 ? "Continue task" : "Begin task"));
+      beginBtn.addEventListener("click", function () { beginTask(o.id); });
+      actions.appendChild(beginBtn);
+    }
+
+    var logToggle = el("button", "btn-ghost", loggingId === o.id ? "Close" : "+ Log time");
+    logToggle.type = "button";
+    logToggle.addEventListener("click", function () {
+      loggingId = (loggingId === o.id) ? null : o.id;
+      render();
+    });
+    actions.appendChild(logToggle);
+    card.appendChild(actions);
+
+    if (loggingId === o.id) card.appendChild(renderLogForm(o));
+
+    return card;
+  }
+
+  function renderLogForm(o) {
+    var form = el("form", "log-form");
+    form.appendChild(el("div", "log-title", "Add time you already worked"));
+
+    var fields = el("div", "fields");
+    var hLabel = el("label", null, "Hours");
+    var hInput = el("input");
+    hInput.type = "number"; hInput.min = "0"; hInput.max = "168"; hInput.step = "1"; hInput.value = "0";
+    hLabel.appendChild(hInput);
+    var mLabel = el("label", null, "Minutes");
+    var mInput = el("input");
+    mInput.type = "number"; mInput.min = "0"; mInput.max = "59"; mInput.step = "5"; mInput.value = "30";
+    mLabel.appendChild(mInput);
+    var actions = el("div", "form-actions");
+    var addBtn = el("button", "btn-primary", "Add to log");
+    addBtn.type = "submit";
+    var subBtn = el("button", "btn-secondary", "Subtract");
+    subBtn.type = "button";
+    actions.appendChild(addBtn);
+    actions.appendChild(subBtn);
+    fields.appendChild(hLabel);
+    fields.appendChild(mLabel);
+    fields.appendChild(actions);
+    form.appendChild(fields);
+    form.appendChild(el("p", "log-hint", "Forgot to start the timer? Add the time here — it counts toward your weekly goal just like the timer does."));
+
+    function applyDelta(sign) {
+      var h = parseInt(hInput.value, 10); if (isNaN(h) || h < 0) h = 0;
+      var m = parseInt(mInput.value, 10); if (isNaN(m) || m < 0) m = 0;
+      var delta = (h * 3600 + m * 60) * sign;
+      if (delta === 0) return;
+      o.spentSeconds = Math.max(0, o.spentSeconds + delta);
+      loggingId = null;
+      save();
+      render();
+    }
+    form.addEventListener("submit", function (ev) { ev.preventDefault(); applyDelta(1); });
+    subBtn.addEventListener("click", function () { applyDelta(-1); });
+
+    setTimeout(function () { mInput.focus(); mInput.select(); }, 0);
+    return form;
+  }
+
+  function spentLineText(o) {
+    var spent = liveSpent(o);
+    var over = spent - o.goalSeconds;
+    var base = fmtShort(spent) + " logged of " + fmtShort(o.goalSeconds);
+    if (over > 60) base += " · " + fmtShort(over) + " past goal";
+    return base;
+  }
+
+  function renderEditForm(o) {
+    var form = el("form", "obj-form");
+    var fields = el("div", "fields");
+
+    var nameLabel = el("label", "grow", "Objective");
+    var nameInput = el("input");
+    nameInput.type = "text"; nameInput.maxLength = 80; nameInput.required = true;
+    nameInput.value = o.name;
+    nameLabel.appendChild(nameInput);
+
+    var hLabel = el("label", null, "Hours / week");
+    var hInput = el("input");
+    hInput.type = "number"; hInput.min = "0"; hInput.max = "120"; hInput.step = "1";
+    hInput.value = Math.floor(o.goalSeconds / 3600);
+    hLabel.appendChild(hInput);
+
+    var mLabel = el("label", null, "Minutes");
+    var mInput = el("input");
+    mInput.type = "number"; mInput.min = "0"; mInput.max = "59"; mInput.step = "5";
+    mInput.value = Math.round((o.goalSeconds % 3600) / 60);
+    mLabel.appendChild(mInput);
+
+    fields.appendChild(nameLabel);
+    fields.appendChild(hLabel);
+    fields.appendChild(mLabel);
+    form.appendChild(fields);
+
+    var actions = el("div", "form-actions");
+    var saveBtn = el("button", "btn-primary", "Save changes");
+    saveBtn.type = "submit";
+    var cancelBtn = el("button", "btn-secondary", "Cancel");
+    cancelBtn.type = "button";
+    cancelBtn.addEventListener("click", function () { editingId = null; render(); });
+    var resetBtn = el("button", "btn-ghost", "Reset logged time");
+    resetBtn.type = "button";
+    resetBtn.addEventListener("click", function () {
+      pauseObjective(o);
+      o.spentSeconds = 0;
+      editingId = null;
+      save();
+      render();
+    });
+    actions.appendChild(saveBtn);
+    actions.appendChild(cancelBtn);
+    actions.appendChild(resetBtn);
+    form.appendChild(actions);
+
+    form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var name = nameInput.value.trim();
+      var goal = readGoalSeconds(hInput, mInput);
+      if (!name || goal <= 0) return;
+      o.name = name;
+      o.goalSeconds = goal;
+      editingId = null;
+      save();
+      render();
+    });
+
+    setTimeout(function () { nameInput.focus(); }, 0);
+    return form;
+  }
+
+  function readGoalSeconds(hInput, mInput) {
+    var h = parseInt(hInput.value, 10);
+    var m = parseInt(mInput.value, 10);
+    if (isNaN(h) || h < 0) h = 0;
+    if (isNaN(m) || m < 0) m = 0;
+    return h * 3600 + m * 60;
+  }
+
+  var deleteArmed = null;
+
+  function render() {
+    document.getElementById("week-range").textContent = weekRangeLabel();
+    cardsEl.textContent = "";
+
+    if (state.objectives.length === 0) {
+      var empty = el("div", "empty");
+      var p1 = el("p");
+      var strong = el("strong", null, "No objectives yet.");
+      p1.appendChild(strong);
+      empty.appendChild(p1);
+      empty.appendChild(el("p", null, "Add one below — give it a name and a weekly time goal, then press Begin task whenever you start working on it."));
+      cardsEl.appendChild(empty);
+    } else {
+      state.objectives.forEach(function (o) { cardsEl.appendChild(renderCard(o)); });
+    }
+    renderSummary();
+  }
+
+  function renderSummary() {
+    var box = document.getElementById("summary");
+    if (state.objectives.length === 0) { box.hidden = true; return; }
+    box.hidden = false;
+    var goal = 0, spent = 0;
+    state.objectives.forEach(function (o) { goal += o.goalSeconds; spent += liveSpent(o); });
+    var pct = goal > 0 ? (spent / goal) * 100 : 0;
+    document.getElementById("sum-pct").textContent = Math.floor(pct) + "%";
+    var fill = document.getElementById("sum-bar");
+    fill.style.width = Math.min(100, pct) + "%";
+    fill.classList.toggle("full", pct >= 100);
+    document.getElementById("sum-totals").innerHTML = "";
+    var totals = document.getElementById("sum-totals");
+    var s1 = el("strong", null, fmtShort(spent));
+    totals.appendChild(s1);
+    totals.appendChild(document.createTextNode(" logged of " + fmtShort(goal) + " planned this week"));
+  }
+
+  // ── Live tick: update digits in place (no re-render, keeps buttons clickable) ──
+  function tick() {
+    if (checkRollover()) { render(); return; }
+    var anyRunning = false;
+    state.objectives.forEach(function (o) {
+      if (!o.running) return;
+      anyRunning = true;
+      var card = cardsEl.querySelector('.card[data-id="' + o.id + '"]');
+      if (!card || editingId === o.id) return;
+      var spent = liveSpent(o);
+      var remaining = o.goalSeconds - spent;
+      var pct = pctOf(o);
+      var goalMet = remaining <= 0;
+      card.classList.toggle("goal-met", goalMet);
+
+      var rem = card.querySelector('[data-role="remaining"]');
+      if (rem) {
+        rem.textContent = goalMet ? "Goal met" : fmtClock(remaining);
+        if (!goalMet) rem.appendChild(el("span", "unit-label", "left"));
+      }
+      var chip = card.querySelector('[data-role="pct"]');
+      if (chip) chip.textContent = Math.floor(pct) + "% of goal";
+      var fill = card.querySelector('[data-role="bar"]');
+      if (fill) {
+        fill.style.width = Math.min(100, pct) + "%";
+        fill.classList.toggle("full", pct >= 100);
+      }
+      var spentLine = card.querySelector('[data-role="spent"]');
+      if (spentLine) spentLine.textContent = spentLineText(o);
+    });
+    if (anyRunning) renderSummary();
+    updateTitle(anyRunning);
+  }
+
+  function updateTitle(anyRunning) {
+    if (anyRunning) {
+      var running = state.objectives.filter(function (o) { return o.running; })[0];
+      var remaining = running.goalSeconds - liveSpent(running);
+      document.title = (remaining > 0 ? fmtClock(remaining) + " · " : "✓ ") + running.name;
+    } else if (document.title !== "Weekly Focus Timer") {
+      document.title = "Weekly Focus Timer";
+    }
+  }
+
+  // ── Add form ──
+  var addForm = document.getElementById("add-form");
+  var showAddBtn = document.getElementById("btn-show-add");
+  showAddBtn.addEventListener("click", function () {
+    showAddBtn.hidden = true;
+    addForm.hidden = false;
+    document.getElementById("add-name").focus();
+  });
+  document.getElementById("btn-cancel-add").addEventListener("click", closeAddForm);
+  function closeAddForm() {
+    addForm.hidden = true;
+    showAddBtn.hidden = false;
+    addForm.reset();
+    document.getElementById("add-hours").value = "5";
+    document.getElementById("add-mins").value = "0";
+  }
+  addForm.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var name = document.getElementById("add-name").value.trim();
+    var goal = readGoalSeconds(document.getElementById("add-hours"), document.getElementById("add-mins"));
+    if (!name || goal <= 0) return;
+    state.objectives.push({
+      id: "o" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: name,
+      goalSeconds: goal,
+      spentSeconds: 0,
+      running: false,
+      startedAt: null
+    });
+    save();
+    closeAddForm();
+    render();
+  });
+
+  // Disarm delete confirmation when clicking elsewhere
+  document.addEventListener("click", function (ev) {
+    if (deleteArmed && !ev.target.closest(".icon-btns")) {
+      deleteArmed = null;
+      render();
+    }
+  });
+
+  // ── Boot ──
+  load();
+  checkRollover();
+  render();
+  setInterval(tick, 1000);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) { checkRollover(); render(); }
+  });
+})();
+</script>
+
+</body>
+</html>
