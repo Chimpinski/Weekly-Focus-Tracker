@@ -21,8 +21,18 @@ Toggle between the two progress styles and light/dark themes right from the head
 - **Local & private** — all data is stored in your browser via `localStorage`. Nothing is sent anywhere.
 - **Light & dark themes** — follows your system preference.
 
-## Usage
+## Live app
 
-Open `index.html` in any modern browser. That's it — no build step, no dependencies.
+**▶ [chimpinski.github.io/Weekly-Focus-Tracker](https://chimpinski.github.io/Weekly-Focus-Tracker/)**
 
-To use it online, enable **GitHub Pages** for this repository (Settings → Pages → deploy from the `main` branch), and it will be served at `https://chimpinski.github.io/Weekly-Focus-Tracker/`.
+Open it in any modern browser — no build step, no dependencies. You can also just open `index.html` from disk.
+
+## Install on your iPhone (or Android)
+
+This is an installable Progressive Web App, so you can run it like a native app without the App Store:
+
+1. Open the [live app](https://chimpinski.github.io/Weekly-Focus-Tracker/) in **Safari** on your iPhone.
+2. Tap the **Share** button, then **Add to Home Screen**.
+3. Launch it from your home screen — it runs full-screen with its own icon and works offline.
+
+Your logged time is stored on the device, so keep using the same installed app to preserve your history.

@@ -1,0 +1,16 @@
+{
+  "name": "Weekly Focus Timer",
+  "short_name": "Focus Timer",
+  "description": "Track time spent on your objectives against weekly goals.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#101615",
+  "theme_color": "#0e7c6f",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
