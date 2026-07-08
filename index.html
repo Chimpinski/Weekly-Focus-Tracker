@@ -6,6 +6,19 @@
 <meta name="description" content="Track time spent on your objectives against weekly goals with per-task timers, manual logging, and progress bars.">
 <meta name="color-scheme" content="light dark">
 <title>Weekly Focus Timer</title>
+<script>
+  // Apply saved theme + progress style before paint to avoid a flash.
+  (function () {
+    try {
+      var t = localStorage.getItem("wft-theme");
+      if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+      var p = localStorage.getItem("wft-progress");
+      document.documentElement.setAttribute("data-progress", p === "ring" ? "ring" : "bar");
+    } catch (e) {
+      document.documentElement.setAttribute("data-progress", "bar");
+    }
+  })();
+</script>
 <style>
   :root {
     --bg: #f4f7f6;
@@ -116,6 +129,56 @@
   }
   header .week-range { color: var(--muted); margin: 2px 0 0; font-size: 14px; }
 
+  .header-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+  .ctrl-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 32px;
+    border-radius: 9px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    padding: 0;
+  }
+  .ctrl-btn:hover { color: var(--accent); }
+  .ctrl-btn svg { width: 16px; height: 16px; }
+
+  .seg {
+    display: inline-flex;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 2px;
+    gap: 2px;
+  }
+  .seg-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 26px;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--muted);
+    padding: 0;
+  }
+  .seg-btn svg { width: 15px; height: 15px; }
+  :root[data-progress="bar"] .seg-btn[data-style="bar"],
+  :root[data-progress="ring"] .seg-btn[data-style="ring"] {
+    background: var(--surface);
+    color: var(--accent);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  }
+
   /* ── Week summary ── */
   .summary {
     background: var(--surface);
@@ -174,6 +237,50 @@
   @media (prefers-reduced-motion: reduce) {
     .bar > i { transition: none; }
   }
+
+  /* ── Progress style switching ── */
+  .linear-only { display: flex; flex-direction: column; gap: 12px; }
+  :root[data-progress="ring"] .linear-only { display: none; }
+  :root[data-progress="bar"] .ring-only { display: none; }
+
+  .ring-wrap { position: relative; width: 156px; height: 156px; margin: 2px auto 0; }
+  .ring { width: 100%; height: 100%; display: block; transform: rotate(135deg); }
+  .ring-track { fill: none; stroke: var(--track); stroke-width: 9; }
+  .ring-arc {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 9;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.4s ease;
+  }
+  .ring-arc.full { stroke: var(--done); }
+  @media (prefers-reduced-motion: reduce) { .ring-arc { transition: none; } }
+  .ring-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .ring-time {
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 25px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+  }
+  .ring-pct {
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .card.goal-met .ring-time,
+  .card.goal-met .ring-pct { color: var(--done); }
 
   /* ── Objective cards ── */
   .cards { display: flex; flex-direction: column; gap: 14px; }
@@ -307,21 +414,67 @@
   .running-label { font-size: 13px; font-weight: 600; color: var(--accent); display: inline-flex; align-items: center; gap: 7px; }
 
   /* ── Add / edit forms ── */
-  .add-card {
-    background: transparent;
-    border: 1.5px dashed var(--line);
-    border-radius: 12px;
-    padding: 16px 18px;
+  /* ── Floating add button ── */
+  .fab {
+    position: fixed;
+    right: 22px;
+    bottom: 22px;
+    z-index: 40;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--accent-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.15);
+    transition: transform 0.15s ease, filter 0.15s ease;
   }
-  .add-card > button.btn-open {
+  .fab:hover { filter: brightness(1.08); transform: translateY(-2px); }
+  .fab:active { transform: translateY(0); }
+  .fab svg { width: 26px; height: 26px; }
+  @media (prefers-reduced-motion: reduce) { .fab { transition: none; } }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(10, 16, 14, 0.55);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 16px;
+  }
+  .modal-overlay[hidden] { display: none; }
+  @media (min-width: 560px) { .modal-overlay { align-items: center; } }
+  .modal {
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     width: 100%;
+    max-width: 460px;
+    padding: 20px;
+    animation: modal-in 0.2s ease;
+  }
+  @keyframes modal-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .modal { animation: none; } }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .modal-head h2 { font-size: 18px; font-weight: 650; margin: 0; letter-spacing: -0.01em; }
+  .modal-close {
     background: transparent;
     color: var(--muted);
-    font-weight: 600;
-    font-size: 14px;
-    padding: 6px;
+    font-size: 22px;
+    line-height: 1;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
   }
-  .add-card > button.btn-open:hover { color: var(--accent); }
+  .modal-close:hover { background: var(--surface-2); color: var(--ink); }
 
   form.obj-form { display: flex; flex-direction: column; gap: 12px; }
   form.obj-form .fields { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -416,15 +569,29 @@
   }
   .empty strong { color: var(--ink); }
 
-  footer { text-align: center; font-size: 12px; color: var(--faint); }
+  footer { text-align: center; font-size: 12px; color: var(--faint); padding: 0 8px; }
+  .motiv { font-style: italic; text-wrap: balance; }
 </style>
 </head>
 <body>
 
 <div class="wrap">
   <header>
-    <p class="eyebrow">Weekly Focus Timer</p>
-    <h1>Your objectives this week</h1>
+    <div class="header-top">
+      <p class="eyebrow">Weekly Focus Timer</p>
+      <div class="controls">
+        <div class="seg" id="style-toggle" role="group" aria-label="Progress style">
+          <button type="button" class="seg-btn" data-style="bar" aria-label="Bar progress" title="Bar progress">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="5.5" width="14" height="3" rx="1.5"/><rect x="3" y="10.5" width="18" height="3" rx="1.5"/><rect x="3" y="15.5" width="9" height="3" rx="1.5"/></svg>
+          </button>
+          <button type="button" class="seg-btn" data-style="ring" aria-label="Ring progress" title="Ring progress">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M6.4 18.5a8 8 0 1 1 11.2 0"/></svg>
+          </button>
+        </div>
+        <button type="button" class="ctrl-btn" id="theme-toggle" aria-label="Toggle light or dark theme" title="Toggle theme"></button>
+      </div>
+    </div>
+    <h1 id="greeting">Welcome back</h1>
     <p class="week-range" id="week-range"></p>
   </header>
 
@@ -441,9 +608,20 @@
 
   <section class="cards" id="cards"></section>
 
-  <section class="add-card" id="add-card">
-    <button class="btn-open" id="btn-show-add" type="button">+ Add an objective</button>
-    <form class="obj-form" id="add-form" hidden>
+  <footer><span class="motiv" id="motiv"></span></footer>
+</div>
+
+<button class="fab" id="fab-add" type="button" aria-label="Add an objective" title="Add an objective">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<div class="modal-overlay" id="modal-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-head">
+      <h2 id="modal-title">New objective</h2>
+      <button class="modal-close" id="modal-close" type="button" aria-label="Close">&times;</button>
+    </div>
+    <form class="obj-form" id="add-form">
       <div class="fields">
         <label class="grow">Objective
           <input type="text" id="add-name" placeholder="e.g. Linear Algebra course" maxlength="80" required>
@@ -461,9 +639,7 @@
       </div>
       <p class="form-hint">Set the total time you want to spend on this during the week. Goals reset every Monday.</p>
     </form>
-  </section>
-
-  <footer>Time is saved automatically in this browser. Progress resets each Monday.</footer>
+  </div>
 </div>
 
 <script>
@@ -472,6 +648,15 @@
 
   var STORAGE_KEY = "weekly-focus-timer-v1";
   var state = { weekStart: null, objectives: [] };
+
+  var USER_NAME = "Ali";
+
+  // Circular-progress geometry: a 270° arc with a 90° gap at the bottom.
+  var RING_R = 52;
+  var RING_C = 2 * Math.PI * RING_R;
+  var RING_TRACK = RING_C * 0.75;
+
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
   // ── Week helpers (weeks start Monday) ──
   function mondayOf(d) {
@@ -629,10 +814,6 @@
     }
 
     var spent = liveSpent(o);
-    var remaining = o.goalSeconds - spent;
-    var pct = pctOf(o);
-    var goalMet = remaining <= 0;
-    if (goalMet) card.classList.add("goal-met");
 
     // Top row: name + edit/delete
     var top = el("div", "top");
@@ -657,32 +838,32 @@
     top.appendChild(btns);
     card.appendChild(top);
 
-    // Readout: remaining countdown + percent chip
+    // Linear progress (readout + bar)
+    var linear = el("div", "linear-only");
     var readout = el("div", "readout");
     var rem = el("div", "remaining");
     rem.setAttribute("data-role", "remaining");
-    rem.textContent = goalMet ? "Goal met" : fmtClock(remaining);
-    if (!goalMet) rem.appendChild(el("span", "unit-label", "left"));
     readout.appendChild(rem);
-    var chip = el("span", "pct-chip", Math.floor(pct) + "% of goal");
+    var chip = el("span", "pct-chip");
     chip.setAttribute("data-role", "pct");
     readout.appendChild(chip);
-    card.appendChild(readout);
-
-    // Progress bar
+    linear.appendChild(readout);
     var bar = el("div", "bar");
     var fill = el("i");
     fill.setAttribute("data-role", "bar");
-    fill.style.width = Math.min(100, pct) + "%";
-    if (pct >= 100) fill.classList.add("full");
     bar.appendChild(fill);
-    card.appendChild(bar);
+    linear.appendChild(bar);
+    card.appendChild(linear);
+
+    // Circular progress (ring)
+    card.appendChild(buildRing());
 
     // Spent line
     var spentLine = el("p", "spent-line");
     spentLine.setAttribute("data-role", "spent");
-    spentLine.textContent = spentLineText(o);
     card.appendChild(spentLine);
+
+    paintProgress(card, o);
 
     // Actions
     var actions = el("div", "actions");
@@ -771,6 +952,69 @@
     return base;
   }
 
+  function buildRing() {
+    var NS = "http://www.w3.org/2000/svg";
+    var wrap = el("div", "ring-only ring-wrap");
+    var svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 120 120");
+    svg.setAttribute("class", "ring");
+    var track = document.createElementNS(NS, "circle");
+    track.setAttribute("class", "ring-track");
+    track.setAttribute("cx", "60"); track.setAttribute("cy", "60"); track.setAttribute("r", String(RING_R));
+    track.setAttribute("stroke-dasharray", RING_TRACK.toFixed(2) + " " + (RING_C - RING_TRACK).toFixed(2));
+    var arc = document.createElementNS(NS, "circle");
+    arc.setAttribute("class", "ring-arc");
+    arc.setAttribute("data-role", "ring-arc");
+    arc.setAttribute("cx", "60"); arc.setAttribute("cy", "60"); arc.setAttribute("r", String(RING_R));
+    arc.setAttribute("stroke-dasharray", "0 " + RING_C.toFixed(2));
+    svg.appendChild(track);
+    svg.appendChild(arc);
+    wrap.appendChild(svg);
+    var center = el("div", "ring-center");
+    var rt = el("div", "ring-time"); rt.setAttribute("data-role", "ring-time");
+    var rp = el("div", "ring-pct"); rp.setAttribute("data-role", "ring-pct");
+    center.appendChild(rt);
+    center.appendChild(rp);
+    wrap.appendChild(center);
+    return wrap;
+  }
+
+  // Update every visual (linear + ring) within a card element from an objective's state.
+  function paintProgress(card, o) {
+    var spent = liveSpent(o);
+    var remaining = o.goalSeconds - spent;
+    var pct = pctOf(o);
+    var goalMet = remaining <= 0;
+    card.classList.toggle("goal-met", goalMet);
+
+    var rem = card.querySelector('[data-role="remaining"]');
+    if (rem) {
+      rem.textContent = goalMet ? "Goal met" : fmtClock(remaining);
+      if (!goalMet) rem.appendChild(el("span", "unit-label", "left"));
+    }
+    var chip = card.querySelector('[data-role="pct"]');
+    if (chip) chip.textContent = Math.floor(pct) + "% of goal";
+    var fill = card.querySelector('[data-role="bar"]');
+    if (fill) {
+      fill.style.width = Math.min(100, pct) + "%";
+      fill.classList.toggle("full", pct >= 100);
+    }
+    var spentLine = card.querySelector('[data-role="spent"]');
+    if (spentLine) spentLine.textContent = spentLineText(o);
+
+    var ringTime = card.querySelector('[data-role="ring-time"]');
+    if (ringTime) ringTime.textContent = goalMet ? "Done" : fmtClock(remaining);
+    var ringPct = card.querySelector('[data-role="ring-pct"]');
+    if (ringPct) ringPct.textContent = Math.floor(pct) + "%";
+    var arc = card.querySelector('[data-role="ring-arc"]');
+    if (arc) {
+      var f = Math.max(0, Math.min(1, pct / 100));
+      var len = f * RING_TRACK;
+      arc.setAttribute("stroke-dasharray", len.toFixed(2) + " " + (RING_C - len).toFixed(2));
+      arc.classList.toggle("full", pct >= 100);
+    }
+  }
+
   function renderEditForm(o) {
     var form = el("form", "obj-form");
     var fields = el("div", "fields");
@@ -854,7 +1098,7 @@
       var strong = el("strong", null, "No objectives yet.");
       p1.appendChild(strong);
       empty.appendChild(p1);
-      empty.appendChild(el("p", null, "Add one below — give it a name and a weekly time goal, then press Begin task whenever you start working on it."));
+      empty.appendChild(el("p", null, "Tap the + button in the corner to add one — give it a name and a weekly time goal, then press Begin task whenever you start working on it."));
       cardsEl.appendChild(empty);
     } else {
       state.objectives.forEach(function (o) { cardsEl.appendChild(renderCard(o)); });
@@ -889,26 +1133,7 @@
       anyRunning = true;
       var card = cardsEl.querySelector('.card[data-id="' + o.id + '"]');
       if (!card || editingId === o.id) return;
-      var spent = liveSpent(o);
-      var remaining = o.goalSeconds - spent;
-      var pct = pctOf(o);
-      var goalMet = remaining <= 0;
-      card.classList.toggle("goal-met", goalMet);
-
-      var rem = card.querySelector('[data-role="remaining"]');
-      if (rem) {
-        rem.textContent = goalMet ? "Goal met" : fmtClock(remaining);
-        if (!goalMet) rem.appendChild(el("span", "unit-label", "left"));
-      }
-      var chip = card.querySelector('[data-role="pct"]');
-      if (chip) chip.textContent = Math.floor(pct) + "% of goal";
-      var fill = card.querySelector('[data-role="bar"]');
-      if (fill) {
-        fill.style.width = Math.min(100, pct) + "%";
-        fill.classList.toggle("full", pct >= 100);
-      }
-      var spentLine = card.querySelector('[data-role="spent"]');
-      if (spentLine) spentLine.textContent = spentLineText(o);
+      paintProgress(card, o);
     });
     if (anyRunning) renderSummary();
     updateTitle(anyRunning);
@@ -924,22 +1149,26 @@
     }
   }
 
-  // ── Add form ──
+  // ── Add-objective modal ──
   var addForm = document.getElementById("add-form");
-  var showAddBtn = document.getElementById("btn-show-add");
-  showAddBtn.addEventListener("click", function () {
-    showAddBtn.hidden = true;
-    addForm.hidden = false;
-    document.getElementById("add-name").focus();
-  });
-  document.getElementById("btn-cancel-add").addEventListener("click", closeAddForm);
-  function closeAddForm() {
-    addForm.hidden = true;
-    showAddBtn.hidden = false;
-    addForm.reset();
+  var overlay = document.getElementById("modal-overlay");
+  function openModal() {
+    overlay.hidden = false;
     document.getElementById("add-hours").value = "5";
     document.getElementById("add-mins").value = "0";
+    setTimeout(function () { document.getElementById("add-name").focus(); }, 0);
   }
+  function closeModal() {
+    overlay.hidden = true;
+    addForm.reset();
+  }
+  document.getElementById("fab-add").addEventListener("click", openModal);
+  document.getElementById("modal-close").addEventListener("click", closeModal);
+  document.getElementById("btn-cancel-add").addEventListener("click", closeModal);
+  overlay.addEventListener("click", function (ev) { if (ev.target === overlay) closeModal(); });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape" && !overlay.hidden) closeModal();
+  });
   addForm.addEventListener("submit", function (ev) {
     ev.preventDefault();
     var name = document.getElementById("add-name").value.trim();
@@ -954,7 +1183,7 @@
       startedAt: null
     });
     save();
-    closeAddForm();
+    closeModal();
     render();
   });
 
@@ -966,9 +1195,98 @@
     }
   });
 
+  // ── Greeting ──
+  function setGreeting() {
+    var n = USER_NAME;
+    var opts = [
+      "Welcome back, " + n,
+      "Let's do this, " + n,
+      n + " returns!",
+      "Good to see you, " + n,
+      "Ready when you are, " + n,
+      "Back at it, " + n,
+      "Let's make it count, " + n,
+      "Time to focus, " + n,
+      "Here we go, " + n,
+      "Lock in, " + n,
+      n + ", let's get to work",
+      "Onwards, " + n
+    ];
+    var hour = new Date().getHours();
+    if (hour < 12) opts.push("Good morning, " + n);
+    else if (hour < 18) opts.push("Good afternoon, " + n);
+    else opts.push("Good evening, " + n);
+    document.getElementById("greeting").textContent = pick(opts);
+  }
+
+  // ── Motivational line ──
+  var QUOTES = [
+    { t: "The secret of getting ahead is getting started.", a: "Mark Twain" },
+    { t: "Well done is better than well said.", a: "Benjamin Franklin" },
+    { t: "Little by little, one travels far.", a: "J.R.R. Tolkien" },
+    { t: "It always seems impossible until it's done.", a: "Nelson Mandela" },
+    { t: "The future depends on what you do today.", a: "Mahatma Gandhi" },
+    { t: "We are what we repeatedly do.", a: "Aristotle" },
+    { t: "Quality is not an act, it is a habit.", a: "Aristotle" },
+    { t: "The best way out is always through.", a: "Robert Frost" },
+    { t: "Focus on being productive instead of busy.", a: "Tim Ferriss" },
+    { t: "Discipline is the bridge between goals and accomplishment.", a: "Jim Rohn" },
+    { t: "Action is the foundational key to all success.", a: "Pablo Picasso" },
+    { t: "A year from now you may wish you had started today.", a: "Karen Lamb" },
+    { t: "Motivation gets you going, discipline keeps you growing.", a: "John C. Maxwell" },
+    { t: "One focused hour beats a distracted day." },
+    { t: "Progress, not perfection." },
+    { t: "Small steps still move you forward." },
+    { t: "Show up — momentum follows." },
+    { t: "Every logged minute is a promise kept." },
+    { t: "The clock's running. So are you." }
+  ];
+  function setMotiv() {
+    var q = pick(QUOTES);
+    document.getElementById("motiv").textContent = q.a
+      ? "“" + q.t + "” — " + q.a
+      : q.t;
+  }
+
+  // ── Theme toggle ──
+  var MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+  var SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+  var themeToggle = document.getElementById("theme-toggle");
+  function effectiveTheme() {
+    var t = document.documentElement.getAttribute("data-theme");
+    if (t === "light" || t === "dark") return t;
+    return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+  }
+  function updateThemeIcon() {
+    themeToggle.innerHTML = effectiveTheme() === "dark" ? SUN : MOON;
+  }
+  themeToggle.addEventListener("click", function () {
+    var next = effectiveTheme() === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem("wft-theme", next); } catch (e) {}
+    updateThemeIcon();
+  });
+  if (window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+      if (!document.documentElement.getAttribute("data-theme")) updateThemeIcon();
+    });
+  }
+
+  // ── Progress-style toggle ──
+  Array.prototype.forEach.call(document.querySelectorAll(".seg-btn"), function (b) {
+    b.addEventListener("click", function () {
+      var s = b.getAttribute("data-style");
+      document.documentElement.setAttribute("data-progress", s);
+      try { localStorage.setItem("wft-progress", s); } catch (e) {}
+    });
+  });
+
   // ── Boot ──
   load();
   checkRollover();
+  setGreeting();
+  setMotiv();
+  updateThemeIcon();
   render();
   setInterval(tick, 1000);
   document.addEventListener("visibilitychange", function () {

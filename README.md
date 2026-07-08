@@ -2,6 +2,14 @@
 
 A single-file web app for tracking time spent on the objectives you care about, measured against weekly goals.
 
+## Preview
+
+| Dark theme · bar progress | Light theme · ring progress |
+| :---: | :---: |
+| ![Dashboard in dark mode showing objectives with linear progress bars](docs/preview-dark.png) | ![Dashboard in light mode showing objectives with circular progress rings](docs/preview-light.png) |
+
+Toggle between the two progress styles and light/dark themes right from the header.
+
 ## Features
 
 - **Objectives with weekly goals** — give each objective a name and a target time for the week (e.g. "Linear Algebra course, 5 hours").
