@@ -40,9 +40,22 @@ jobs:
       - name: Sync web assets to iOS
         run: npx cap sync ios
 
+      - name: Inject Live Activity extension and plugin
+        run: |
+          # Copy native sources into the generated project
+          cp -R native/ios/WeeklyWidget ios/App/WeeklyWidget
+          cp -R native/ios/Shared ios/App/Shared
+          cp -R native/ios/LiveTimer ios/App/App/LiveTimer
+          # Declare Live Activity support in the app's Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NSSupportsLiveActivities bool true" ios/App/App/Info.plist
+          # Add the widget target + plugin files to the Xcode project
+          sudo gem install xcodeproj -N
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then export MV="${GITHUB_REF_NAME#v}"; else export MV="1.1.1"; fi
+          ruby scripts/add_widget.rb
+
       - name: Build unsigned .app
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then MV="${GITHUB_REF_NAME#v}"; else MV="1.1.0"; fi
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then MV="${GITHUB_REF_NAME#v}"; else MV="1.1.1"; fi
           echo "Marketing version: $MV"
           cd ios/App
           xcodebuild \
@@ -89,7 +102,7 @@ jobs:
           body: |
             Unsigned `.ipa` for personal sideloading (AltStore / Sideloadly sign it with your Apple ID at install time).
 
-            Bundle ID `com.chimpinski.weeklyfocus`. Min iOS 13.
+            Bundle ID `com.chimpinski.weeklyfocus`. Min iOS 13; the Live Activity (lock-screen/Dynamic Island timer with pause/play) requires iOS 17+.
 
             Prefer no sideloading? The app is also a PWA — open
             https://chimpinski.github.io/Weekly-Focus-Tracker/ in Safari and choose **Add to Home Screen**.

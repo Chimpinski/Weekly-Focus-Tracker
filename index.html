@@ -818,6 +818,7 @@
   // ── Persistence ──
   function save() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* private mode */ }
+    syncLiveActivity();
   }
   function load() {
     try {
@@ -885,6 +886,7 @@
         pauseObjective(o); // one task at a time
       }
     });
+    state.lastActiveId = id;
     save();
     render();
   }
@@ -1480,6 +1482,78 @@
     setGreeting();
   });
 
+  // ── iOS Live Activity bridge (no-op on the web; active only inside the native app) ──
+  function nativePlugin() {
+    try {
+      if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+        return (window.Capacitor.Plugins && window.Capacitor.Plugins.LiveTimer) || null;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function syncLiveActivity() {
+    var p = nativePlugin();
+    if (!p) return;
+    try {
+      var running = state.objectives.filter(function (o) { return o.running; })[0];
+      if (running) {
+        p.sync({
+          running: true,
+          id: running.id,
+          name: running.name,
+          remainingSeconds: Math.max(0, running.goalSeconds - liveSpent(running)),
+          goalSeconds: running.goalSeconds
+        });
+      } else {
+        p.sync({ running: false });
+      }
+    } catch (e) { /* never let the bridge break the app */ }
+  }
+
+  // Apply pause/resume presses made in the Live Activity, at their exact timestamps.
+  function consumeNativeActions() {
+    var p = nativePlugin();
+    if (!p) return;
+    try {
+      p.consumeActions().then(function (res) {
+        var actions = (res && res.actions) || [];
+        if (!actions.length) return;
+        var changed = false;
+        actions.forEach(function (a) {
+          var at = (typeof a.at === "number" && a.at > 0) ? a.at : Date.now();
+          if (a.action === "pause") {
+            var running = state.objectives.filter(function (o) { return o.running; })[0];
+            if (running && running.startedAt) {
+              var effective = Math.max(running.startedAt, at);
+              running.spentSeconds += Math.max(0, (effective - running.startedAt) / 1000);
+              running.running = false;
+              running.startedAt = null;
+              changed = true;
+            }
+          } else if (a.action === "resume") {
+            var target = byId(state.lastActiveId);
+            if (target && !target.running) {
+              target.running = true;
+              target.startedAt = at;
+              changed = true;
+            }
+          }
+        });
+        if (changed) { save(); render(); }
+      }).catch(function () {});
+    } catch (e) {}
+  }
+
+  (function initNativeBridge() {
+    var p = nativePlugin();
+    if (!p) return;
+    // Widget button pressed while the app is awake → apply immediately.
+    if (p.addListener) {
+      try { p.addListener("timerAction", function () { consumeNativeActions(); }); } catch (e) {}
+    }
+  })();
+
   // ── Boot ──
   load();
   checkRollover();
@@ -1487,9 +1561,11 @@
   setMotiv();
   render();
   maybeOnboard();
+  consumeNativeActions(); // apply any pause/resume made from the Live Activity while we were closed
+  syncLiveActivity();
   setInterval(tick, 1000);
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) { checkRollover(); render(); }
+    if (!document.hidden) { checkRollover(); consumeNativeActions(); render(); }
   });
 })();
 </script>
