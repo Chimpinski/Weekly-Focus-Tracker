@@ -1,8 +1,11 @@
 <img src="icon-512.png" alt="Weekly Focus Tracker app icon" width="112" align="right">
+<br />
 
-# Weekly Focus Tracker
+# Weekly Focus Tracker 
 
 A single-file web app for tracking time spent on the objectives you care about, measured against weekly (or daily) goals.
+
+
 
 ## Preview
 
