@@ -682,6 +682,114 @@
 
   footer { text-align: center; font-size: 12px; color: var(--faint); padding: 0 8px; }
   .motiv { font-style: italic; text-wrap: balance; }
+
+  /* ── Tags (daily, etc.) ── */
+  .title-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .tag {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 2px 9px;
+  }
+
+  /* ── Goal-met readout: smaller green count-up timer ── */
+  .card.goal-met .remaining { font-size: 24px; }
+
+  /* ── Daily sub-goal ── */
+  .daily-sub { display: flex; flex-direction: column; gap: 6px; }
+  .daily-sub-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .daily-sub-label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.02em; }
+  .daily-sub-val { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .bar.daily-bar { height: 6px; }
+
+  /* Glow celebration for daily completions */
+  @keyframes barGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(63, 191, 169, 0); }
+    35% { box-shadow: 0 0 14px 2px var(--accent); }
+  }
+  .bar.glow { animation: barGlow 1.1s ease-in-out 2; }
+  .card.glow-card { animation: barGlow 1.2s ease-in-out 2; }
+  @media (prefers-reduced-motion: reduce) { .bar.glow, .card.glow-card { animation: none; } }
+
+  /* ── Celebration popup ── */
+  .celebrate {
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    max-width: 400px;
+    padding: 30px 26px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    animation: modal-in 0.25s ease;
+  }
+  @media (prefers-reduced-motion: reduce) { .celebrate { animation: none; } }
+  .celebrate .burst {
+    width: 66px; height: 66px; border-radius: 50%;
+    background: var(--accent-soft);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent);
+    box-shadow: 0 0 22px rgba(63, 191, 169, 0.35);
+  }
+  .celebrate .burst svg { width: 36px; height: 36px; }
+  .celebrate h3 { margin: 2px 0 0; font-size: 23px; font-weight: 700; letter-spacing: -0.01em; }
+  .celebrate p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; }
+  .celebrate .btn-primary { width: 100%; justify-content: center; padding: 13px; font-size: 16px; margin-top: 6px; }
+
+  /* ── Redesigned goal form ── */
+  .goal-fields { display: flex; flex-direction: column; gap: 16px; }
+  .field-block { display: flex; flex-direction: column; gap: 8px; }
+  .field-label { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .field-sub { font-size: 11px; font-weight: 600; color: var(--faint); }
+  .field-hint { font-size: 12px; color: var(--faint); margin: 0; }
+  .time-row { display: flex; gap: 10px; }
+  .time-field { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  form.obj-form .full-input { width: 100%; }
+  form.obj-form .time-field input { width: 100%; }
+
+  /* ── Sync code entry (WFT- prefix + auto-formatted body) ── */
+  .code-entry {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .code-entry:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .code-prefix {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    background: var(--surface-2);
+    color: var(--muted);
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    font-weight: 600;
+    font-size: 16px;
+    border-right: 1px solid var(--line);
+  }
+  input.code-field {
+    border: none !important;
+    outline: none !important;
+    border-radius: 0 !important;
+    flex: 1;
+    min-width: 0;
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .sync-code-row .code-entry { flex: 1; }
 </style>
 </head>
 <body>
@@ -737,22 +845,11 @@
       <button class="modal-close" id="modal-close" type="button" aria-label="Close">&times;</button>
     </div>
     <form class="obj-form" id="add-form">
-      <div class="fields">
-        <label class="grow">Objective
-          <input type="text" id="add-name" placeholder="e.g. Linear Algebra course" maxlength="80" required>
-        </label>
-        <label>Hours / week
-          <input type="number" id="add-hours" min="0" max="120" step="1" value="5" inputmode="numeric" pattern="[0-9]*">
-        </label>
-        <label>Minutes
-          <input type="number" id="add-mins" min="0" max="59" step="5" value="0" inputmode="numeric" pattern="[0-9]*">
-        </label>
-      </div>
+      <div id="add-fields"></div>
       <div class="form-actions">
         <button class="btn-primary" type="submit">Add objective</button>
         <button class="btn-secondary" type="button" id="btn-cancel-add">Cancel</button>
       </div>
-      <p class="form-hint">Set the total time you want to spend on this during the week. Goals reset every Monday.</p>
     </form>
   </div>
 </div>
@@ -792,7 +889,10 @@
             <button class="btn-secondary" type="button" id="sync-enter-toggle">Enter a code</button>
           </div>
           <form id="sync-enter-form" hidden>
-            <input type="text" id="sync-code-input" placeholder="WFT-XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false">
+            <div class="code-entry">
+              <span class="code-prefix">WFT-</span>
+              <input type="text" id="sync-code-input" class="code-field" placeholder="XXXX-XXXX-XXXX" maxlength="14" autocapitalize="characters" autocomplete="off" spellcheck="false">
+            </div>
             <button class="btn-primary" type="submit">Connect</button>
             <p class="sync-error" id="sync-enter-error" hidden></p>
             <p class="sync-hint">Connecting replaces this device's data with the synced data.</p>
@@ -835,11 +935,25 @@
     <button type="button" class="link-btn" id="onboard-sync-link">Already using this app on another device? Enter your sync code</button>
     <form id="onboard-sync-form" hidden>
       <div class="sync-code-row">
-        <input type="text" id="onboard-sync-input" placeholder="WFT-XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false">
+        <div class="code-entry">
+          <span class="code-prefix">WFT-</span>
+          <input type="text" id="onboard-sync-input" class="code-field" placeholder="XXXX-XXXX-XXXX" maxlength="14" autocapitalize="characters" autocomplete="off" spellcheck="false">
+        </div>
         <button class="btn-secondary" type="submit">Connect</button>
       </div>
       <p class="sync-error" id="onboard-sync-error" hidden></p>
     </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="celebrate-overlay" hidden>
+  <div class="celebrate" role="dialog" aria-modal="true" aria-labelledby="celebrate-title">
+    <div class="burst">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <h3 id="celebrate-title">Good job!</h3>
+    <p id="celebrate-msg"></p>
+    <button class="btn-primary" type="button" id="celebrate-ok">Nice!</button>
   </div>
 </div>
 
@@ -884,7 +998,38 @@
     return "Week of " + start.toLocaleDateString(undefined, opts) + " – " + end.toLocaleDateString(undefined, opts);
   }
 
+  // ── Day helpers (daily goals reset at local midnight) ──
+  function dayKeyOf(d) {
+    d = d || new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function startOfTodayMs() {
+    var d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }
+
+  // Fill in fields added in later versions so old/synced data behaves.
+  function migrate() {
+    if (!Array.isArray(state.objectives)) state.objectives = [];
+    var today = dayKeyOf(new Date());
+    state.objectives.forEach(function (o) {
+      if (o.cadence !== "daily") o.cadence = "weekly";
+      if (typeof o.dailyGoalSeconds !== "number") o.dailyGoalSeconds = 0;
+      if (typeof o.daySpentSeconds !== "number") o.daySpentSeconds = 0;
+      if (!o.dayKey) o.dayKey = today;
+      if (typeof o.celebratedWeekly === "undefined") o.celebratedWeekly = weeklyMet(o);
+      if (typeof o.celebratedDaily === "undefined") o.celebratedDaily = dailyMet(o);
+    });
+    if (typeof state.celebratedWeekTotal === "undefined") state.celebratedWeekTotal = weekTotalMet();
+  }
+
   // ── Persistence ──
+  function persistLocal() {
+    // Save without bumping the sync timestamp (used for automatic resets that
+    // each device computes deterministically, so they needn't fight over sync).
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+  }
   function save() {
     state.updatedAt = Math.max(Date.now(), (state.updatedAt || 0) + 1); // monotonic for last-write-wins sync
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* private mode */ }
@@ -899,6 +1044,7 @@
       }
     } catch (e) { /* corrupted or unavailable — start fresh */ }
     if (!state.weekStart) state.weekStart = weekKey(new Date());
+    migrate();
   }
 
   // ── Weekly rollover: finalize timers, zero out logged time ──
@@ -907,11 +1053,29 @@
     if (state.weekStart === current) return false;
     state.objectives.forEach(function (o) {
       o.spentSeconds = 0;
+      o.celebratedWeekly = false;
       if (o.running) { o.startedAt = Date.now(); } // running timer carries into the new week from zero
     });
+    state.celebratedWeekTotal = false;
     state.weekStart = current;
     save();
     return true;
+  }
+
+  // ── Daily rollover: reset today's logged time at midnight ──
+  function checkDailyRollover() {
+    var today = dayKeyOf(new Date());
+    var changed = false;
+    state.objectives.forEach(function (o) {
+      if (o.dayKey !== today) {
+        o.daySpentSeconds = 0;
+        o.dayKey = today;
+        o.celebratedDaily = false;
+        changed = true;
+      }
+    });
+    if (changed) persistLocal();
+    return changed;
   }
 
   // ── Time math ──
@@ -919,6 +1083,31 @@
     var s = o.spentSeconds;
     if (o.running && o.startedAt) s += Math.max(0, (Date.now() - o.startedAt) / 1000);
     return s;
+  }
+  // Time logged toward the daily goal today (only counts the part since midnight).
+  function liveDaySpent(o) {
+    var s = o.daySpentSeconds || 0;
+    if (o.running && o.startedAt) s += Math.max(0, (Date.now() - Math.max(o.startedAt, startOfTodayMs())) / 1000);
+    return s;
+  }
+  // The metric a card's main progress bar tracks: daily for daily objectives, else weekly.
+  function primarySpent(o) { return o.cadence === "daily" ? liveDaySpent(o) : liveSpent(o); }
+  function weeklyMet(o) { return o.cadence !== "daily" && o.goalSeconds > 0 && liveSpent(o) >= o.goalSeconds; }
+  function dailyGoalOf(o) { return o.cadence === "daily" ? o.goalSeconds : (o.dailyGoalSeconds || 0); }
+  function dailyMet(o) { var g = dailyGoalOf(o); return g > 0 && liveDaySpent(o) >= g; }
+  function computeWeekTotals() {
+    var goal = 0, spent = 0, count = 0;
+    state.objectives.forEach(function (o) {
+      if (o.cadence === "daily") return; // daily objectives are tracked on their own
+      count++;
+      goal += o.goalSeconds;
+      spent += Math.min(liveSpent(o), o.goalSeconds); // overflow past a goal doesn't inflate the week
+    });
+    return { goal: goal, spent: spent, count: count };
+  }
+  function weekTotalMet() {
+    var t = computeWeekTotals();
+    return t.count > 0 && t.goal > 0 && t.spent >= t.goal;
   }
   function fmtClock(totalSeconds) {
     totalSeconds = Math.max(0, Math.round(totalSeconds));
@@ -944,7 +1133,11 @@
   // ── Actions ──
   function pauseObjective(o) {
     if (!o.running) return;
-    o.spentSeconds += Math.max(0, (Date.now() - o.startedAt) / 1000);
+    var now = Date.now();
+    o.spentSeconds += Math.max(0, (now - o.startedAt) / 1000);
+    // Daily bucket: only the portion since midnight counts toward today.
+    o.daySpentSeconds = (o.daySpentSeconds || 0) + Math.max(0, (now - Math.max(o.startedAt, startOfTodayMs())) / 1000);
+    o.dayKey = dayKeyOf(new Date());
     o.running = false;
     o.startedAt = null;
   }
@@ -1021,13 +1214,17 @@
       return card;
     }
 
-    var spent = liveSpent(o);
+    var spent = primarySpent(o);
 
-    // Top row: name + edit/delete
+    // Top row: name (+ daily tag) + edit/delete
     var top = el("div", "top");
     var titleWrap = el("div");
-    titleWrap.appendChild(el("h2", null, o.name));
-    titleWrap.appendChild(el("p", "goal-note", "Weekly goal: " + fmtShort(o.goalSeconds)));
+    var titleLine = el("div", "title-line");
+    titleLine.appendChild(el("h2", null, o.name));
+    if (o.cadence === "daily") titleLine.appendChild(el("span", "tag", "Daily"));
+    titleWrap.appendChild(titleLine);
+    titleWrap.appendChild(el("p", "goal-note",
+      (o.cadence === "daily" ? "Daily goal: " : "Weekly goal: ") + fmtShort(o.goalSeconds)));
     top.appendChild(titleWrap);
 
     var btns = el("div", "icon-btns");
@@ -1065,6 +1262,24 @@
 
     // Circular progress (ring)
     card.appendChild(buildRing());
+
+    // Daily sub-goal (weekly objectives with an optional daily target)
+    var sub = el("div", "daily-sub");
+    sub.setAttribute("data-role", "daily-sub");
+    var subHead = el("div", "daily-sub-head");
+    var subLabel = el("span", "daily-sub-label");
+    subLabel.setAttribute("data-role", "daily-label");
+    var subVal = el("span", "daily-sub-val");
+    subVal.setAttribute("data-role", "daily-val");
+    subHead.appendChild(subLabel);
+    subHead.appendChild(subVal);
+    sub.appendChild(subHead);
+    var subBar = el("div", "bar daily-bar");
+    var subFill = el("i");
+    subFill.setAttribute("data-role", "daily-bar");
+    subBar.appendChild(subFill);
+    sub.appendChild(subBar);
+    card.appendChild(sub);
 
     // Spent line
     var spentLine = el("p", "spent-line");
@@ -1135,7 +1350,7 @@
     fields.appendChild(mLabel);
     fields.appendChild(actions);
     form.appendChild(fields);
-    form.appendChild(el("p", "log-hint", "Forgot to start the timer? Add the time here — it counts toward your weekly goal just like the timer does."));
+    form.appendChild(el("p", "log-hint", "Forgot to start the timer? Add the time here — it counts toward your goal just like the timer does."));
 
     function applyDelta(sign) {
       var h = parseInt(hInput.value, 10); if (isNaN(h) || h < 0) h = 0;
@@ -1143,6 +1358,8 @@
       var delta = (h * 3600 + m * 60) * sign;
       if (delta === 0) return;
       o.spentSeconds = Math.max(0, o.spentSeconds + delta);
+      o.daySpentSeconds = Math.max(0, (o.daySpentSeconds || 0) + delta); // assume the time was today
+      o.dayKey = dayKeyOf(new Date());
       loggingId = null;
       save();
       render();
@@ -1155,11 +1372,16 @@
   }
 
   function spentLineText(o) {
-    var spent = liveSpent(o);
-    var over = spent - o.goalSeconds;
-    var base = fmtShort(spent) + " logged of " + fmtShort(o.goalSeconds);
-    if (over > 60) base += " · " + fmtShort(over) + " past goal";
-    return base;
+    var isDaily = o.cadence === "daily";
+    var spent = primarySpent(o);
+    var goal = o.goalSeconds;
+    var over = spent - goal;
+    if (goal > 0 && over >= 0) {
+      var base = fmtShort(spent) + " logged";
+      if (over > 60) base += " · " + fmtShort(over) + " past goal";
+      return base;
+    }
+    return fmtShort(spent) + " logged of " + fmtShort(goal) + (isDaily ? " today" : "");
   }
 
   function buildRing() {
@@ -1191,19 +1413,21 @@
 
   // Update every visual (linear + ring) within a card element from an objective's state.
   function paintProgress(card, o) {
-    var spent = liveSpent(o);
-    var remaining = o.goalSeconds - spent;
-    var pct = pctOf(o);
-    var goalMet = remaining <= 0;
+    var spent = primarySpent(o);
+    var goal = o.goalSeconds;
+    var remaining = goal - spent;
+    var pct = goal > 0 ? (spent / goal) * 100 : 0;
+    var goalMet = goal > 0 && remaining <= 0;
     card.classList.toggle("goal-met", goalMet);
 
     var rem = card.querySelector('[data-role="remaining"]');
     if (rem) {
-      rem.textContent = goalMet ? "Goal met" : fmtClock(remaining);
-      if (!goalMet) rem.appendChild(el("span", "unit-label", "left"));
+      // Once complete, keep a smaller green clock counting the total time upward.
+      rem.textContent = goalMet ? fmtClock(spent) : fmtClock(remaining);
+      rem.appendChild(el("span", "unit-label", goalMet ? "total" : "left"));
     }
     var chip = card.querySelector('[data-role="pct"]');
-    if (chip) chip.textContent = Math.floor(pct) + "% of goal";
+    if (chip) chip.textContent = goalMet ? "Goal met!" : (Math.floor(pct) + "% of goal");
     var fill = card.querySelector('[data-role="bar"]');
     if (fill) {
       fill.style.width = Math.min(100, pct) + "%";
@@ -1213,9 +1437,9 @@
     if (spentLine) spentLine.textContent = spentLineText(o);
 
     var ringTime = card.querySelector('[data-role="ring-time"]');
-    if (ringTime) ringTime.textContent = goalMet ? "Done" : fmtClock(remaining);
+    if (ringTime) ringTime.textContent = fmtClock(goalMet ? spent : remaining);
     var ringPct = card.querySelector('[data-role="ring-pct"]');
-    if (ringPct) ringPct.textContent = Math.floor(pct) + "%";
+    if (ringPct) ringPct.textContent = goalMet ? "Goal met!" : (Math.floor(pct) + "%");
     var arc = card.querySelector('[data-role="ring-arc"]');
     if (arc) {
       var f = Math.max(0, Math.min(1, pct / 100));
@@ -1223,35 +1447,127 @@
       arc.setAttribute("stroke-dasharray", len.toFixed(2) + " " + (RING_C - len).toFixed(2));
       arc.classList.toggle("full", pct >= 100);
     }
+
+    // Daily sub-goal bar (weekly objectives that also set a daily target)
+    var sub = card.querySelector('[data-role="daily-sub"]');
+    if (sub) {
+      var dGoal = dailyGoalOf(o);
+      if (o.cadence !== "daily" && dGoal > 0) {
+        sub.hidden = false;
+        var dSpent = liveDaySpent(o);
+        var dPct = (dSpent / dGoal) * 100;
+        var dLabel = card.querySelector('[data-role="daily-label"]');
+        if (dLabel) dLabel.textContent = "Daily goal: " + fmtShort(dGoal);
+        var dVal = card.querySelector('[data-role="daily-val"]');
+        if (dVal) dVal.textContent = dPct >= 100 ? ("Done · " + fmtShort(dSpent) + " today") : (fmtShort(dSpent) + " / " + fmtShort(dGoal));
+        var dBar = card.querySelector('[data-role="daily-bar"]');
+        if (dBar) { dBar.style.width = Math.min(100, dPct) + "%"; dBar.classList.toggle("full", dPct >= 100); }
+      } else {
+        sub.hidden = true;
+      }
+    }
+  }
+
+  // One hours/minutes column.
+  function timeField(labelText, value, max) {
+    var f = el("div", "time-field");
+    f.appendChild(el("span", "field-sub", labelText));
+    var inp = el("input");
+    inp.type = "number"; inp.min = "0"; inp.max = String(max);
+    inp.step = (labelText === "Minutes") ? "5" : "1";
+    inp.setAttribute("inputmode", "numeric"); inp.setAttribute("pattern", "[0-9]*");
+    inp.value = String(value);
+    f.appendChild(inp);
+    f._input = inp;
+    return f;
+  }
+
+  // Shared name + cadence + time fields for both the add and edit forms.
+  function buildGoalFields(init) {
+    init = init || {};
+    var cadence = init.cadence === "daily" ? "daily" : "weekly";
+    var wrap = el("div", "goal-fields");
+
+    // Objective name
+    var nameBlock = el("div", "field-block");
+    nameBlock.appendChild(el("span", "field-label", "Objective"));
+    var nameInput = el("input");
+    nameInput.type = "text"; nameInput.maxLength = 80; nameInput.required = true;
+    nameInput.className = "full-input";
+    if (init.name != null) nameInput.value = init.name;
+    else nameInput.placeholder = "e.g. " + pick(EXAMPLE_TITLES);
+    nameBlock.appendChild(nameInput);
+    wrap.appendChild(nameBlock);
+
+    // Goal type
+    var cadBlock = el("div", "field-block");
+    cadBlock.appendChild(el("span", "field-label", "Goal type"));
+    var cadSeg = el("div", "seg-wide");
+    var wBtn = el("button", "seg-wide-btn", "Weekly"); wBtn.type = "button";
+    var dBtn = el("button", "seg-wide-btn", "Daily"); dBtn.type = "button";
+    cadSeg.appendChild(wBtn); cadSeg.appendChild(dBtn);
+    cadBlock.appendChild(cadSeg);
+    wrap.appendChild(cadBlock);
+
+    // Primary goal time
+    var primBlock = el("div", "field-block");
+    var primLabel = el("span", "field-label", "Time per week");
+    primBlock.appendChild(primLabel);
+    var primRow = el("div", "time-row");
+    var goalSec = init.goalSeconds || 0;
+    var pH = timeField("Hours", Math.floor(goalSec / 3600), 120);
+    var pM = timeField("Minutes", Math.round((goalSec % 3600) / 60), 59);
+    primRow.appendChild(pH); primRow.appendChild(pM);
+    primBlock.appendChild(primRow);
+    wrap.appendChild(primBlock);
+
+    // Optional daily sub-goal (weekly only)
+    var subBlock = el("div", "field-block");
+    subBlock.appendChild(el("span", "field-label", "Daily goal (optional)"));
+    var subRow = el("div", "time-row");
+    var dg = init.dailyGoalSeconds || 0;
+    var sH = timeField("Hours", Math.floor(dg / 3600), 24);
+    var sM = timeField("Minutes", Math.round((dg % 3600) / 60), 59);
+    subRow.appendChild(sH); subRow.appendChild(sM);
+    subBlock.appendChild(subRow);
+    subBlock.appendChild(el("p", "field-hint", "A smaller daily target inside this weekly goal. Leave at 0 for none."));
+    wrap.appendChild(subBlock);
+
+    function applyCadence(c) {
+      cadence = c;
+      wBtn.classList.toggle("active", c === "weekly");
+      dBtn.classList.toggle("active", c === "daily");
+      primLabel.textContent = c === "daily" ? "Time per day" : "Time per week";
+      pH._input.max = c === "daily" ? "24" : "120";
+      subBlock.hidden = (c === "daily");
+    }
+    wBtn.addEventListener("click", function () { applyCadence("weekly"); });
+    dBtn.addEventListener("click", function () { applyCadence("daily"); });
+    applyCadence(cadence);
+
+    function toSecs(hf, mf) {
+      var h = parseInt(hf._input.value, 10); if (isNaN(h) || h < 0) h = 0;
+      var m = parseInt(mf._input.value, 10); if (isNaN(m) || m < 0) m = 0;
+      return h * 3600 + m * 60;
+    }
+    wrap.readValues = function () {
+      return {
+        name: nameInput.value.trim(),
+        cadence: cadence,
+        goalSeconds: toSecs(pH, pM),
+        dailyGoalSeconds: cadence === "daily" ? 0 : toSecs(sH, sM)
+      };
+    };
+    wrap.focusName = function () { setTimeout(function () { nameInput.focus(); }, 0); };
+    return wrap;
   }
 
   function renderEditForm(o) {
     var form = el("form", "obj-form");
-    var fields = el("div", "fields");
-
-    var nameLabel = el("label", "grow", "Objective");
-    var nameInput = el("input");
-    nameInput.type = "text"; nameInput.maxLength = 80; nameInput.required = true;
-    nameInput.value = o.name;
-    nameLabel.appendChild(nameInput);
-
-    var hLabel = el("label", null, "Hours / week");
-    var hInput = el("input");
-    hInput.type = "number"; hInput.min = "0"; hInput.max = "120"; hInput.step = "1";
-    hInput.setAttribute("inputmode", "numeric"); hInput.setAttribute("pattern", "[0-9]*");
-    hInput.value = Math.floor(o.goalSeconds / 3600);
-    hLabel.appendChild(hInput);
-
-    var mLabel = el("label", null, "Minutes");
-    var mInput = el("input");
-    mInput.type = "number"; mInput.min = "0"; mInput.max = "59"; mInput.step = "5";
-    mInput.setAttribute("inputmode", "numeric"); mInput.setAttribute("pattern", "[0-9]*");
-    mInput.value = Math.round((o.goalSeconds % 3600) / 60);
-    mLabel.appendChild(mInput);
-
-    fields.appendChild(nameLabel);
-    fields.appendChild(hLabel);
-    fields.appendChild(mLabel);
+    var fields = buildGoalFields({
+      name: o.name, cadence: o.cadence,
+      goalSeconds: o.goalSeconds, dailyGoalSeconds: o.dailyGoalSeconds
+    });
     form.appendChild(fields);
 
     var actions = el("div", "form-actions");
@@ -1265,6 +1581,9 @@
     resetBtn.addEventListener("click", function () {
       pauseObjective(o);
       o.spentSeconds = 0;
+      o.daySpentSeconds = 0;
+      o.celebratedWeekly = false;
+      o.celebratedDaily = false;
       editingId = null;
       save();
       render();
@@ -1276,26 +1595,19 @@
 
     form.addEventListener("submit", function (ev) {
       ev.preventDefault();
-      var name = nameInput.value.trim();
-      var goal = readGoalSeconds(hInput, mInput);
-      if (!name || goal <= 0) return;
-      o.name = name;
-      o.goalSeconds = goal;
+      var v = fields.readValues();
+      if (!v.name || v.goalSeconds <= 0) return;
+      o.name = v.name;
+      o.cadence = v.cadence;
+      o.goalSeconds = v.goalSeconds;
+      o.dailyGoalSeconds = v.dailyGoalSeconds;
       editingId = null;
       save();
       render();
     });
 
-    setTimeout(function () { nameInput.focus(); }, 0);
+    fields.focusName();
     return form;
-  }
-
-  function readGoalSeconds(hInput, mInput) {
-    var h = parseInt(hInput.value, 10);
-    var m = parseInt(mInput.value, 10);
-    if (isNaN(h) || h < 0) h = 0;
-    if (isNaN(m) || m < 0) m = 0;
-    return h * 3600 + m * 60;
   }
 
   var deleteArmed = null;
@@ -1316,14 +1628,15 @@
       state.objectives.forEach(function (o) { cardsEl.appendChild(renderCard(o)); });
     }
     renderSummary();
+    checkCelebrations();
   }
 
   function renderSummary() {
     var box = document.getElementById("summary");
-    if (state.objectives.length === 0) { box.hidden = true; return; }
+    var totalsInfo = computeWeekTotals();
+    if (totalsInfo.count === 0) { box.hidden = true; return; } // no weekly objectives → no week total
     box.hidden = false;
-    var goal = 0, spent = 0;
-    state.objectives.forEach(function (o) { goal += o.goalSeconds; spent += liveSpent(o); });
+    var goal = totalsInfo.goal, spent = totalsInfo.spent;
     var pct = goal > 0 ? (spent / goal) * 100 : 0;
     document.getElementById("sum-pct").textContent = Math.floor(pct) + "%";
     var fill = document.getElementById("sum-bar");
@@ -1348,6 +1661,7 @@
   // ── Live tick: update digits in place (no re-render, keeps buttons clickable) ──
   function tick() {
     if (checkRollover()) { render(); return; }
+    if (checkDailyRollover()) { render(); return; }
     var anyRunning = false;
     state.objectives.forEach(function (o) {
       if (!o.running) return;
@@ -1356,33 +1670,94 @@
       if (!card || editingId === o.id) return;
       paintProgress(card, o);
     });
-    if (anyRunning) renderSummary();
+    if (anyRunning) { renderSummary(); checkCelebrations(); }
     updateTitle(anyRunning);
   }
 
   function updateTitle(anyRunning) {
     if (anyRunning) {
       var running = state.objectives.filter(function (o) { return o.running; })[0];
-      var remaining = running.goalSeconds - liveSpent(running);
+      var remaining = running.goalSeconds - primarySpent(running);
       document.title = (remaining > 0 ? fmtClock(remaining) + " · " : "✓ ") + running.name;
     } else if (document.title !== "Weekly Focus Timer") {
       document.title = "Weekly Focus Timer";
     }
   }
 
+  // ── Celebrations ──
+  var celebrateQueue = [];
+  var celebrating = false;
+  var CELEBRATE_OPENERS = ["Good job!", "Congratulations!", "Great work!", "Nice work!", "Well done!", "You did it!", "Amazing!"];
+
+  function enqueueCelebration(item) {
+    celebrateQueue.push(item);
+    showNextCelebration();
+  }
+  function showNextCelebration() {
+    if (celebrating || !celebrateQueue.length) return;
+    if (onboard && !onboard.hidden) return; // don't cover the welcome screen
+    celebrating = true;
+    var item = celebrateQueue.shift();
+    document.getElementById("celebrate-title").textContent = pick(CELEBRATE_OPENERS);
+    document.getElementById("celebrate-msg").textContent = item.type === "week"
+      ? "You hit your entire weekly plan — every goal met. Incredible focus!"
+      : "You completed " + item.name + " for the week.";
+    document.getElementById("celebrate-overlay").hidden = false;
+  }
+  document.getElementById("celebrate-ok").addEventListener("click", function () {
+    document.getElementById("celebrate-overlay").hidden = true;
+    celebrating = false;
+    setTimeout(showNextCelebration, 220);
+  });
+
+  // Glow a completed daily objective (card) or daily sub-goal (its bar) briefly.
+  function triggerGlow(o) {
+    var card = cardsEl.querySelector('.card[data-id="' + o.id + '"]');
+    if (!card) return;
+    var target = o.cadence === "daily" ? card : card.querySelector('.daily-bar');
+    if (!target) return;
+    var cls = o.cadence === "daily" ? "glow-card" : "glow";
+    target.classList.remove(cls);
+    void target.offsetWidth; // restart the animation
+    target.classList.add(cls);
+    setTimeout(function () { target.classList.remove(cls); }, 2600);
+  }
+
+  // Fire popups (weekly objective / week total) and glows (daily) on completion transitions.
+  function checkCelebrations() {
+    var dirty = false;
+    state.objectives.forEach(function (o) {
+      if (o.cadence !== "daily") {
+        var wm = weeklyMet(o);
+        if (wm && !o.celebratedWeekly) { o.celebratedWeekly = true; dirty = true; enqueueCelebration({ type: "objective", name: o.name }); }
+        else if (!wm && o.celebratedWeekly) { o.celebratedWeekly = false; dirty = true; }
+      }
+      var dm = dailyMet(o);
+      if (dm && !o.celebratedDaily) { o.celebratedDaily = true; dirty = true; triggerGlow(o); }
+      else if (!dm && o.celebratedDaily) { o.celebratedDaily = false; dirty = true; }
+    });
+    var wt = weekTotalMet();
+    if (wt && !state.celebratedWeekTotal) { state.celebratedWeekTotal = true; dirty = true; enqueueCelebration({ type: "week" }); }
+    else if (!wt && state.celebratedWeekTotal) { state.celebratedWeekTotal = false; dirty = true; }
+    if (dirty) persistLocal();
+  }
+
   // ── Add-objective modal ──
   var addForm = document.getElementById("add-form");
   var overlay = document.getElementById("modal-overlay");
+  var addFields = null;
   function openModal() {
+    var host = document.getElementById("add-fields");
+    host.innerHTML = "";
+    addFields = buildGoalFields({ goalSeconds: 5 * 3600 });
+    host.appendChild(addFields);
     overlay.hidden = false;
-    document.getElementById("add-name").placeholder = "e.g. " + pick(EXAMPLE_TITLES);
-    document.getElementById("add-hours").value = "5";
-    document.getElementById("add-mins").value = "0";
-    setTimeout(function () { document.getElementById("add-name").focus(); }, 0);
+    addFields.focusName();
   }
   function closeModal() {
     overlay.hidden = true;
-    addForm.reset();
+    document.getElementById("add-fields").innerHTML = "";
+    addFields = null;
   }
   document.getElementById("fab-add").addEventListener("click", openModal);
   document.getElementById("modal-close").addEventListener("click", closeModal);
@@ -1393,16 +1768,23 @@
   });
   addForm.addEventListener("submit", function (ev) {
     ev.preventDefault();
-    var name = document.getElementById("add-name").value.trim();
-    var goal = readGoalSeconds(document.getElementById("add-hours"), document.getElementById("add-mins"));
-    if (!name || goal <= 0) return;
+    if (!addFields) return;
+    var v = addFields.readValues();
+    if (!v.name || v.goalSeconds <= 0) return;
+    var now = Date.now();
     state.objectives.push({
-      id: "o" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      name: name,
-      goalSeconds: goal,
+      id: "o" + now.toString(36) + Math.random().toString(36).slice(2, 6),
+      name: v.name,
+      cadence: v.cadence,
+      goalSeconds: v.goalSeconds,
+      dailyGoalSeconds: v.dailyGoalSeconds,
       spentSeconds: 0,
+      daySpentSeconds: 0,
+      dayKey: dayKeyOf(new Date()),
       running: false,
-      startedAt: null
+      startedAt: null,
+      celebratedWeekly: false,
+      celebratedDaily: false
     });
     save();
     closeModal();
@@ -1432,7 +1814,17 @@
       "Here we go, " + n,
       "Lock in, " + n,
       n + ", let's get to work",
-      "Onwards, " + n
+      "Onwards, " + n,
+      "Deep breath, " + n + " — let's go",
+      "The grind awaits, " + n,
+      "Make it happen, " + n,
+      "Great to have you, " + n,
+      "Let's build momentum, " + n,
+      "Focus mode on, " + n,
+      "One block at a time, " + n,
+      "Show up strong, " + n,
+      "You've got this, " + n,
+      n + ", eyes on the goal"
     ];
     var hour = new Date().getHours();
     if (hour < 12) opts.push("Good morning, " + n);
@@ -1456,12 +1848,25 @@
     { t: "Action is the foundational key to all success.", a: "Pablo Picasso" },
     { t: "A year from now you may wish you had started today.", a: "Karen Lamb" },
     { t: "Motivation gets you going, discipline keeps you growing.", a: "John C. Maxwell" },
+    { t: "Either you run the day, or the day runs you.", a: "Jim Rohn" },
+    { t: "Do the hard jobs first. The easy jobs will take care of themselves.", a: "Dale Carnegie" },
+    { t: "You don't have to be great to start, but you have to start to be great.", a: "Zig Ziglar" },
+    { t: "Amateurs sit and wait for inspiration; the rest of us just get up and go to work.", a: "Chuck Close" },
+    { t: "Concentrate all your thoughts upon the work at hand.", a: "Alexander Graham Bell" },
+    { t: "The way to get started is to quit talking and begin doing.", a: "Walt Disney" },
+    { t: "Great things are done by a series of small things brought together.", a: "Vincent van Gogh" },
+    { t: "Slow is smooth, and smooth is fast." },
     { t: "One focused hour beats a distracted day." },
     { t: "Progress, not perfection." },
     { t: "Small steps still move you forward." },
     { t: "Show up — momentum follows." },
     { t: "Every logged minute is a promise kept." },
-    { t: "The clock's running. So are you." }
+    { t: "The clock's running. So are you." },
+    { t: "Consistency compounds." },
+    { t: "Done today is one less tomorrow." },
+    { t: "Start before you feel ready." },
+    { t: "A little each day adds up to a lot." },
+    { t: "Your future self is watching. Make them proud." }
   ];
   function setMotiv() {
     var q = pick(QUOTES);
@@ -1579,6 +1984,30 @@
     return "WFT-" + chars.slice(0, 4).join("") + "-" + chars.slice(4, 8).join("") + "-" + chars.slice(8, 12).join("");
   }
 
+  // The "WFT-" prefix is shown as a static label, so the input holds only the
+  // 12-character body. Auto-uppercase, strip junk, cap at 12, group with dashes.
+  function formatCodeBody(v) {
+    var raw = (v || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
+    var parts = [];
+    for (var i = 0; i < raw.length; i += 4) parts.push(raw.slice(i, i + 4));
+    return parts.join("-");
+  }
+  function attachCodeInput(input) {
+    input.addEventListener("input", function () { input.value = formatCodeBody(input.value); });
+  }
+  function fullCodeFromField(input) {
+    return "WFT-" + (input.value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
+  }
+  // Normalize any entered code to the canonical WFT-XXXX-XXXX-XXXX display form.
+  function canonicalCode(code) {
+    var raw = (code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (raw.indexOf("WFT") === 0) raw = raw.slice(3);
+    raw = raw.slice(0, 12);
+    var parts = [];
+    for (var i = 0; i < raw.length; i += 4) parts.push(raw.slice(i, i + 4));
+    return "WFT-" + parts.join("-");
+  }
+
   function syncOk() { syncError = false; syncLastOk = Date.now(); updateSyncUI(); }
   function syncFail() { syncError = true; updateSyncUI(); }
 
@@ -1624,8 +2053,10 @@
   }
   function adoptRemoteState(remote) {
     state = remote;
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+    migrate();
     checkRollover();
+    checkDailyRollover();
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
     setGreeting();
     render();
   }
@@ -1645,7 +2076,7 @@
           onResult("Code not found. Create it on your other device first, then try again.");
           return;
         }
-        setSyncCode(code);
+        setSyncCode(canonicalCode(code));
         adoptRemoteState(remote);
         syncOk();
         onResult(null);
@@ -1690,17 +2121,19 @@
     createSyncCode();
   });
   var enterForm = document.getElementById("sync-enter-form");
+  var settingsCodeInput = document.getElementById("sync-code-input");
+  attachCodeInput(settingsCodeInput);
   document.getElementById("sync-enter-toggle").addEventListener("click", function () {
     enterForm.hidden = !enterForm.hidden;
-    if (!enterForm.hidden) document.getElementById("sync-code-input").focus();
+    if (!enterForm.hidden) settingsCodeInput.focus();
   });
   enterForm.addEventListener("submit", function (ev) {
     ev.preventDefault();
     var err = document.getElementById("sync-enter-error");
     err.hidden = true;
-    connectWithCode(document.getElementById("sync-code-input").value, function (e) {
+    connectWithCode(fullCodeFromField(settingsCodeInput), function (e) {
       if (e) { err.textContent = e; err.hidden = false; return; }
-      document.getElementById("sync-code-input").value = "";
+      settingsCodeInput.value = "";
       enterForm.hidden = true;
       updateSyncUI();
     });
@@ -1722,16 +2155,18 @@
   });
 
   // ── Sync UI wiring (onboarding) ──
+  var onboardCodeInput = document.getElementById("onboard-sync-input");
+  attachCodeInput(onboardCodeInput);
   document.getElementById("onboard-sync-link").addEventListener("click", function () {
     var f = document.getElementById("onboard-sync-form");
     f.hidden = !f.hidden;
-    if (!f.hidden) document.getElementById("onboard-sync-input").focus();
+    if (!f.hidden) onboardCodeInput.focus();
   });
   document.getElementById("onboard-sync-form").addEventListener("submit", function (ev) {
     ev.preventDefault();
     var err = document.getElementById("onboard-sync-error");
     err.hidden = true;
-    connectWithCode(document.getElementById("onboard-sync-input").value, function (e) {
+    connectWithCode(fullCodeFromField(onboardCodeInput), function (e) {
       if (e) { err.textContent = e; err.hidden = false; return; }
       if (state.userName && state.userName.trim()) {
         document.getElementById("onboard").hidden = true;
@@ -1744,6 +2179,7 @@
   // ── Boot ──
   load();
   checkRollover();
+  checkDailyRollover();
   setGreeting();
   setMotiv();
   render();
@@ -1753,7 +2189,7 @@
   setInterval(tick, 1000);
   setInterval(function () { if (!document.hidden) pullRemote(); }, 45000);
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) { checkRollover(); pullRemote(); render(); }
+    if (!document.hidden) { checkRollover(); checkDailyRollover(); pullRemote(); render(); }
   });
 })();
 </script>

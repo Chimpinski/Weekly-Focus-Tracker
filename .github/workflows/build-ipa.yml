@@ -42,7 +42,7 @@ jobs:
 
       - name: Build unsigned .app
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then MV="${GITHUB_REF_NAME#v}"; else MV="1.2.0"; fi
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then MV="${GITHUB_REF_NAME#v}"; else MV="1.2.1"; fi
           echo "Marketing version: $MV"
           cd ios/App
           xcodebuild \
