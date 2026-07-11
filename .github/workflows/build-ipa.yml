@@ -94,15 +94,12 @@ jobs:
           if [ ! -s RELEASE_NOTES.md ]; then
             printf "Weekly Focus Timer %s\n" "$VER" > RELEASE_NOTES.md
           fi
-          cat >> RELEASE_NOTES.md <<'EOF'
-
----
-**Install:** download `WeeklyFocusTimer-unsigned.ipa` below and sideload it (AltStore / Sideloadly / signing service — it's signed with your own Apple ID at install time). Bundle ID `com.chimpinski.weeklyfocus`, min iOS 13.
-
-Prefer no sideloading? It's also a PWA — open https://chimpinski.github.io/Weekly-Focus-Tracker/ in Safari and choose **Add to Home Screen**.
-
-Full history: [CHANGELOG.md](https://github.com/Chimpinski/Weekly-Focus-Tracker/blob/main/CHANGELOG.md)
-EOF
+          {
+            printf '\n---\n'
+            printf '%s\n\n' '**Install:** download `WeeklyFocusTimer-unsigned.ipa` below and sideload it (AltStore / Sideloadly / signing service — signed with your own Apple ID at install time). Bundle ID `com.chimpinski.weeklyfocus`, min iOS 13.'
+            printf '%s\n\n' 'Prefer no sideloading? It is also a PWA — open https://chimpinski.github.io/Weekly-Focus-Tracker/ in Safari and choose **Add to Home Screen**.'
+            printf '%s\n' 'Full history: [CHANGELOG.md](https://github.com/Chimpinski/Weekly-Focus-Tracker/blob/main/CHANGELOG.md)'
+          } >> RELEASE_NOTES.md
 
       - name: Attach IPA to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
