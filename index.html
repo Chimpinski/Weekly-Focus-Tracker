@@ -790,6 +790,157 @@
     text-transform: uppercase;
   }
   .sync-code-row .code-entry { flex: 1; }
+
+  /* ── Streak flame ── */
+  .streak-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    height: 32px;
+    padding: 0 9px 0 7px;
+    color: var(--faint);
+  }
+  .streak-btn .flame { width: 18px; height: 18px; display: block; transition: color 0.4s ease, filter 0.4s ease; }
+  .streak-btn.lit { color: var(--accent); }
+  .streak-btn.lit .flame { filter: drop-shadow(0 0 5px var(--accent)); }
+  .streak-count { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .streak-btn:not(.has-streak) .streak-count { display: none; }
+  @keyframes flameLight {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.4); }
+    100% { transform: scale(1); }
+  }
+  .streak-btn.just-lit .flame { animation: flameLight 0.7s ease; }
+  @media (prefers-reduced-motion: reduce) { .streak-btn.just-lit .flame { animation: none; } }
+
+  /* Streak popup */
+  .streak-modal { text-align: center; align-items: center; }
+  .streak-big { position: relative; width: 140px; height: 140px; margin: 4px auto 2px; }
+  .streak-big .flame { width: 100%; height: 100%; color: var(--track); transition: color 0.4s ease, filter 0.4s ease; }
+  .streak-big.lit .flame { color: var(--accent); filter: drop-shadow(0 0 16px rgba(63, 191, 169, 0.6)); }
+  .streak-big .num {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding-top: 14px;
+    font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums;
+    color: #fff;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  }
+  .streak-desc { color: var(--muted); font-size: 14px; margin: 0; line-height: 1.5; }
+  .streak-week { display: flex; justify-content: space-between; gap: 6px; width: 100%; margin-top: 4px; }
+  .streak-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .streak-day .dot {
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 2px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--faint);
+  }
+  .streak-day .dot svg { width: 15px; height: 15px; }
+  .streak-day.earned .dot { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .streak-day.rest .dot { border-style: dashed; }
+  .streak-day.today .dot { box-shadow: 0 0 0 2px var(--accent-soft); }
+  .streak-day .dl { font-size: 10px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: 0.03em; }
+
+  /* ── Progress / history modal ── */
+  .modal.wide { max-width: 560px; }
+  .prog-section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+  .prog-weeknav, .prog-monthnav { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .prog-weeknav .rng, .prog-monthnav .mlabel { font-weight: 650; font-size: 15px; }
+  .navbtn {
+    width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+    background: var(--surface-2); border: 1px solid var(--line); color: var(--muted);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .navbtn:hover:not(:disabled) { color: var(--accent); }
+  .navbtn:disabled { opacity: 0.35; cursor: default; }
+  .navbtn svg { width: 16px; height: 16px; }
+
+  .prog-total { display: flex; align-items: baseline; justify-content: space-between; margin: 10px 0 6px; }
+  .prog-total .big { font-size: 30px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .prog-total .sub { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .prog-goal-list { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+  .prog-goal { display: flex; flex-direction: column; gap: 5px; }
+  .prog-goal .gr { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+  .prog-goal .gname { font-weight: 600; overflow-wrap: anywhere; }
+  .prog-goal .gpct { color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .prog-empty { color: var(--muted); font-size: 14px; text-align: center; padding: 16px 0; }
+
+  .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
+  .month-grid .wd { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; color: var(--faint); text-align: center; text-transform: uppercase; }
+  .mrow { display: contents; }
+  .mcell {
+    aspect-ratio: 1 / 1;
+    border-radius: 6px;
+    background: var(--surface-2);
+    display: flex; align-items: flex-start; justify-content: flex-end;
+    padding: 3px 4px;
+    font-size: 9px; color: var(--faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .mcell.empty { background: transparent; }
+  .mcell.lvl-1 { background: rgba(63, 191, 169, 0.25); }
+  .mcell.lvl-2 { background: rgba(63, 191, 169, 0.45); }
+  .mcell.lvl-3 { background: rgba(63, 191, 169, 0.7); }
+  .mcell.lvl-4 { background: var(--accent); }
+  .mcell.lvl-3, .mcell.lvl-4 { color: var(--accent-ink); }
+  .week-band {
+    grid-column: 1 / -1;
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px;
+    border-radius: 8px;
+    padding: 3px; margin: -3px;
+    cursor: pointer;
+  }
+  .week-band.selected { box-shadow: 0 0 0 2px var(--accent); background: var(--accent-soft); }
+  .grid-legend { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 10px; font-size: 11px; color: var(--faint); }
+  .grid-legend .sw { width: 12px; height: 12px; border-radius: 3px; }
+
+  /* Stats */
+  .stat-bars { display: flex; align-items: flex-end; gap: 8px; height: 150px; margin-top: 8px; padding-top: 10px; }
+  .stat-bar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+  .stat-bar .col { width: 70%; max-width: 34px; background: var(--accent); border-radius: 5px 5px 0 0; min-height: 3px; transition: height 0.3s ease; }
+  .stat-bar .col.dim { background: var(--track); }
+  .stat-bar .cap { font-size: 10px; color: var(--faint); }
+  .stat-bar .val { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .stat-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
+  .stat-table th, .stat-table td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+  .stat-table th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; }
+  .stat-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ── Pomodoro ── */
+  .card.pomo { border-color: var(--accent); }
+  .pomo-phase { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin: 0; }
+  .pomo-phase.focus { color: var(--accent); }
+  .pomo-phase.break { color: var(--muted); }
+  .pomo-main {
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 44px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.05;
+  }
+  .card.pomo.on-break .pomo-main { color: var(--muted); }
+  .pomo-total { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pomo-total strong { color: var(--ink); font-weight: 600; }
+  @keyframes cardFlash {
+    0%, 100% { box-shadow: var(--shadow); }
+    50% { box-shadow: 0 0 0 2px var(--accent), 0 0 26px 2px var(--accent); }
+  }
+  .card.flash { animation: cardFlash 0.6s ease-in-out 3; }
+  @media (prefers-reduced-motion: reduce) { .card.flash { animation: none; } }
+  .pomo-fields { display: flex; flex-direction: column; gap: 16px; }
+  .pomo-optrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .toggle {
+    position: relative; width: 46px; height: 27px; border-radius: 999px;
+    background: var(--track); border: none; flex-shrink: 0; transition: background 0.2s ease;
+  }
+  .toggle::after {
+    content: ""; position: absolute; top: 3px; left: 3px;
+    width: 21px; height: 21px; border-radius: 50%; background: #fff;
+    transition: transform 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle.on::after { transform: translateX(19px); }
 </style>
 </head>
 <body>
@@ -799,6 +950,13 @@
     <div class="header-top">
       <p class="eyebrow">Weekly Focus Timer</p>
       <div class="controls">
+        <button type="button" class="streak-btn" id="streak-btn" aria-label="Streak" title="Streak">
+          <svg class="flame" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 23a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5-2-1.6-3.5-4-4-6.5-2.224 1.946-3.072 3.857-2 6 .5 1 1 1.62 1 3a2.5 2.5 0 0 1-2.5 2.5A2.5 2.5 0 0 1 6 13c-.567.706-1 1.847-1 3a7 7 0 0 0 7 7z"/></svg>
+          <span class="streak-count" id="streak-count">0</span>
+        </button>
+        <button type="button" class="ctrl-btn" id="progress-btn" aria-label="Progress" title="Progress">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="0.5" fill="currentColor" stroke="none"/><rect x="12" y="8" width="3" height="10" rx="0.5" fill="currentColor" stroke="none"/><rect x="17" y="5" width="3" height="13" rx="0.5" fill="currentColor" stroke="none"/></svg>
+        </button>
         <button type="button" class="ctrl-btn" id="settings-btn" aria-label="Settings" title="Settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
@@ -881,6 +1039,13 @@
         </div>
       </div>
       <div class="setting-field">
+        <span class="setting-label">Streak</span>
+        <div class="pomo-optrow">
+          <span class="sync-hint" style="flex:1">Skip weekends — missing a Saturday or Sunday won't break your streak.</span>
+          <button type="button" class="toggle" id="settings-weekends" role="switch" aria-label="Skip weekends for streaks"></button>
+        </div>
+      </div>
+      <div class="setting-field">
         <span class="setting-label">Sync between devices</span>
         <div class="sync-box" id="sync-off">
           <p class="sync-hint">See the same timers on your phone and PC — no account needed. Create a code on one device, then enter it on the other.</p>
@@ -948,12 +1113,81 @@
 
 <div class="modal-overlay" id="celebrate-overlay" hidden>
   <div class="celebrate" role="dialog" aria-modal="true" aria-labelledby="celebrate-title">
-    <div class="burst">
+    <div class="burst" id="celebrate-burst">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
     </div>
     <h3 id="celebrate-title">Good job!</h3>
     <p id="celebrate-msg"></p>
     <button class="btn-primary" type="button" id="celebrate-ok">Nice!</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="streak-overlay" hidden>
+  <div class="modal streak-modal" role="dialog" aria-modal="true" aria-labelledby="streak-title">
+    <div class="modal-head">
+      <h2 id="streak-title">Your streak</h2>
+      <button class="modal-close" id="streak-close" type="button" aria-label="Close">&times;</button>
+    </div>
+    <div class="streak-big" id="streak-big">
+      <svg class="flame" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 23a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5-2-1.6-3.5-4-4-6.5-2.224 1.946-3.072 3.857-2 6 .5 1 1 1.62 1 3a2.5 2.5 0 0 1-2.5 2.5A2.5 2.5 0 0 1 6 13c-.567.706-1 1.847-1 3a7 7 0 0 0 7 7z"/></svg>
+      <div class="num" id="streak-big-num">0</div>
+    </div>
+    <p class="streak-desc" id="streak-desc">Track at least 15 minutes each day to build your streak.</p>
+    <div class="streak-week" id="streak-week"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="progress-overlay" hidden>
+  <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="progress-title">
+    <div class="modal-head">
+      <h2 id="progress-title">Progress</h2>
+      <button class="modal-close" id="progress-close" type="button" aria-label="Close">&times;</button>
+    </div>
+    <div id="progress-body"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="pomo-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pomo-title">
+    <div class="modal-head">
+      <h2 id="pomo-title">Pomodoro mode</h2>
+      <button class="modal-close" id="pomo-close" type="button" aria-label="Close">&times;</button>
+    </div>
+    <form id="pomo-form" class="obj-form">
+      <div class="pomo-fields">
+        <div class="field-block">
+          <span class="field-label">Focus block</span>
+          <div class="time-row">
+            <div class="time-field"><span class="field-sub">Minutes</span>
+              <input type="number" id="pomo-focus" min="1" max="180" step="5" value="25" inputmode="numeric" pattern="[0-9]*"></div>
+          </div>
+        </div>
+        <div class="field-block">
+          <span class="field-label">Break block</span>
+          <div class="time-row">
+            <div class="time-field"><span class="field-sub">Minutes</span>
+              <input type="number" id="pomo-break" min="1" max="120" step="1" value="5" inputmode="numeric" pattern="[0-9]*"></div>
+          </div>
+        </div>
+        <div class="field-block">
+          <div class="pomo-optrow">
+            <span class="field-label" style="margin:0">Set a total focus time</span>
+            <button type="button" class="toggle" id="pomo-total-toggle" role="switch" aria-label="Set a total focus time"></button>
+          </div>
+          <div class="time-row" id="pomo-total-row" hidden>
+            <div class="time-field"><span class="field-sub">Hours</span>
+              <input type="number" id="pomo-total-h" min="0" max="24" step="1" value="2" inputmode="numeric" pattern="[0-9]*"></div>
+            <div class="time-field"><span class="field-sub">Minutes</span>
+              <input type="number" id="pomo-total-m" min="0" max="59" step="5" value="0" inputmode="numeric" pattern="[0-9]*"></div>
+          </div>
+          <p class="field-hint">Only focus blocks count toward this total. When it runs out, you're done.</p>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-primary" type="submit">Start</button>
+        <button class="btn-secondary" type="button" id="pomo-cancel">Cancel</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -1022,6 +1256,36 @@
       if (typeof o.celebratedDaily === "undefined") o.celebratedDaily = dailyMet(o);
     });
     if (typeof state.celebratedWeekTotal === "undefined") state.celebratedWeekTotal = weekTotalMet();
+    if (!state.dailyLog || typeof state.dailyLog !== "object") state.dailyLog = {};   // dayKey -> seconds tracked (all objectives)
+    if (!state.weekHistory || typeof state.weekHistory !== "object") state.weekHistory = {}; // mondayKey -> snapshot
+    if (typeof state.excludeWeekends !== "boolean") state.excludeWeekends = false;
+    if (typeof state.streakMilestone !== "number") state.streakMilestone = 0;
+    if (typeof state.pomodoro === "undefined") state.pomodoro = null;
+  }
+
+  // ── Daily activity log (powers the streak, the month grid, and stats) ──
+  // Attribute an elapsed span to each calendar day it covers.
+  function recordDaily(startMs, endMs) {
+    if (!(endMs > startMs)) return;
+    if (!state.dailyLog) state.dailyLog = {};
+    var cur = startMs;
+    while (cur < endMs) {
+      var midnight = new Date(cur); midnight.setHours(24, 0, 0, 0);
+      var segEnd = Math.min(endMs, midnight.getTime());
+      var key = dayKeyOf(new Date(cur));
+      state.dailyLog[key] = (state.dailyLog[key] || 0) + (segEnd - cur) / 1000;
+      cur = segEnd;
+    }
+  }
+  function dailyLogged(dayKey) { return (state.dailyLog && state.dailyLog[dayKey]) || 0; }
+  // Committed time today plus the live portion of any running timer.
+  function trackedTodaySeconds() {
+    var s = dailyLogged(dayKeyOf(new Date()));
+    var start = startOfTodayMs();
+    state.objectives.forEach(function (o) {
+      if (o.running && o.startedAt) s += Math.max(0, (Date.now() - Math.max(o.startedAt, start)) / 1000);
+    });
+    return s;
   }
 
   // ── Persistence ──
@@ -1047,14 +1311,35 @@
     migrate();
   }
 
-  // ── Weekly rollover: finalize timers, zero out logged time ──
+  // Save a snapshot of a finished week's per-goal achievement for the history view.
+  function snapshotWeek(mondayKey) {
+    if (!mondayKey || !state.weekHistory) return;
+    var objs = state.objectives.filter(function (o) { return o.cadence !== "daily"; })
+      .map(function (o) { return { name: o.name, goalSeconds: o.goalSeconds, spentSeconds: o.spentSeconds }; });
+    if (!objs.length) return;
+    var goal = 0, spent = 0;
+    objs.forEach(function (o) { goal += o.goalSeconds; spent += Math.min(o.spentSeconds, o.goalSeconds); });
+    state.weekHistory[mondayKey] = { objectives: objs, goalTotal: goal, spentTotal: spent };
+  }
+
+  // ── Weekly rollover: snapshot the week, then zero out logged time ──
   function checkRollover() {
     var current = weekKey(new Date());
     if (state.weekStart === current) return false;
+    var now = Date.now();
+    // Commit any running time so history + the daily log are accurate.
+    state.objectives.forEach(function (o) {
+      if (o.running && o.startedAt) {
+        recordDaily(o.startedAt, now);
+        o.spentSeconds += Math.max(0, (now - o.startedAt) / 1000);
+        o.daySpentSeconds = (o.daySpentSeconds || 0) + Math.max(0, (now - Math.max(o.startedAt, startOfTodayMs())) / 1000);
+        o.startedAt = now; // keep the timer running into the new week
+      }
+    });
+    snapshotWeek(state.weekStart);
     state.objectives.forEach(function (o) {
       o.spentSeconds = 0;
       o.celebratedWeekly = false;
-      if (o.running) { o.startedAt = Date.now(); } // running timer carries into the new week from zero
     });
     state.celebratedWeekTotal = false;
     state.weekStart = current;
@@ -1134,6 +1419,7 @@
   function pauseObjective(o) {
     if (!o.running) return;
     var now = Date.now();
+    recordDaily(o.startedAt, now); // log the elapsed span to the daily activity log
     o.spentSeconds += Math.max(0, (now - o.startedAt) / 1000);
     // Daily bucket: only the portion since midnight counts toward today.
     o.daySpentSeconds = (o.daySpentSeconds || 0) + Math.max(0, (now - Math.max(o.startedAt, startOfTodayMs())) / 1000);
@@ -1211,6 +1497,11 @@
 
     if (editingId === o.id) {
       card.appendChild(renderEditForm(o));
+      return card;
+    }
+
+    if (state.pomodoro && state.pomodoro.id === o.id) {
+      buildPomodoroCard(card, o);
       return card;
     }
 
@@ -1317,6 +1608,12 @@
       render();
     });
     actions.appendChild(logToggle);
+
+    var pomoBtn = el("button", "btn-ghost", "Pomodoro");
+    pomoBtn.type = "button";
+    pomoBtn.addEventListener("click", function () { openPomodoroSetup(o.id); });
+    actions.appendChild(pomoBtn);
+
     card.appendChild(actions);
 
     if (loggingId === o.id) card.appendChild(renderLogForm(o));
@@ -1360,6 +1657,8 @@
       o.spentSeconds = Math.max(0, o.spentSeconds + delta);
       o.daySpentSeconds = Math.max(0, (o.daySpentSeconds || 0) + delta); // assume the time was today
       o.dayKey = dayKeyOf(new Date());
+      var dk = dayKeyOf(new Date());
+      state.dailyLog[dk] = Math.max(0, (state.dailyLog[dk] || 0) + delta); // reflect in the activity log
       loggingId = null;
       save();
       render();
@@ -1629,6 +1928,7 @@
     }
     renderSummary();
     checkCelebrations();
+    updateStreak();
   }
 
   function renderSummary() {
@@ -1662,15 +1962,23 @@
   function tick() {
     if (checkRollover()) { render(); return; }
     if (checkDailyRollover()) { render(); return; }
+    if (state.pomodoro && pomodoroTick()) { updateStreak(); return; } // phase switch re-rendered
     var anyRunning = false;
     state.objectives.forEach(function (o) {
       if (!o.running) return;
       anyRunning = true;
       var card = cardsEl.querySelector('.card[data-id="' + o.id + '"]');
       if (!card || editingId === o.id) return;
-      paintProgress(card, o);
+      if (state.pomodoro && state.pomodoro.id === o.id) paintPomodoro(card, o);
+      else paintProgress(card, o);
     });
-    if (anyRunning) { renderSummary(); checkCelebrations(); }
+    // A pomodoro on break has no running objective, but its break timer still ticks.
+    if (state.pomodoro && state.pomodoro.phase === "break") {
+      var pc = cardsEl.querySelector('.card[data-id="' + state.pomodoro.id + '"]');
+      if (pc) paintPomodoro(pc, byId(state.pomodoro.id));
+    }
+    if (anyRunning || state.pomodoro) { renderSummary(); checkCelebrations(); }
+    updateStreak();
     updateTitle(anyRunning);
   }
 
@@ -1698,10 +2006,28 @@
     if (onboard && !onboard.hidden) return; // don't cover the welcome screen
     celebrating = true;
     var item = celebrateQueue.shift();
-    document.getElementById("celebrate-title").textContent = pick(CELEBRATE_OPENERS);
-    document.getElementById("celebrate-msg").textContent = item.type === "week"
-      ? "You hit your entire weekly plan — every goal met. Incredible focus!"
-      : "You completed " + item.name + " for the week.";
+    var burst = document.getElementById("celebrate-burst");
+    var title = document.getElementById("celebrate-title");
+    var msg = document.getElementById("celebrate-msg");
+    if (item.type === "streak") {
+      burst.innerHTML = FLAME_SVG;
+      title.textContent = item.days + "-day streak!";
+      msg.textContent = pick([
+        "You're on fire — " + item.days + " days in a row.",
+        "Consistency pays off. " + item.days + " days straight!",
+        "Keep the flame alive — " + item.days + " days and counting!"
+      ]);
+    } else if (item.type === "pomodoro") {
+      burst.innerHTML = CHECK_SVG;
+      title.textContent = "Focus session complete";
+      msg.textContent = item.name ? ("Great deep work on " + item.name + " — time to recharge.") : "Great deep work — time to recharge.";
+    } else {
+      burst.innerHTML = CHECK_SVG;
+      title.textContent = pick(CELEBRATE_OPENERS);
+      msg.textContent = item.type === "week"
+        ? "You hit your entire weekly plan — every goal met. Incredible focus!"
+        : "You completed " + item.name + " for the week.";
+    }
     document.getElementById("celebrate-overlay").hidden = false;
   }
   document.getElementById("celebrate-ok").addEventListener("click", function () {
@@ -1908,8 +2234,16 @@
       b.classList.toggle("active", b.getAttribute("data-progress-val") === pp);
     });
   }
+  var weekendsToggle = document.getElementById("settings-weekends");
+  weekendsToggle.addEventListener("click", function () {
+    state.excludeWeekends = !state.excludeWeekends;
+    weekendsToggle.classList.toggle("on", state.excludeWeekends);
+    save();
+    updateStreak();
+  });
   function openSettings() {
     settingsName.value = state.userName || "";
+    weekendsToggle.classList.toggle("on", !!state.excludeWeekends);
     syncSettingsToggles();
     settingsOverlay.hidden = false;
   }
@@ -2176,6 +2510,483 @@
     });
   });
 
+  // ══ Streak ══
+  var STREAK_MIN = 900; // 15 minutes
+  var STREAK_MILESTONES = [3, 5, 7, 10, 14, 21, 30, 50, 75, 100, 150, 200, 250, 300, 365];
+  var FLAME_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 23a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5-2-1.6-3.5-4-4-6.5-2.224 1.946-3.072 3.857-2 6 .5 1 1 1.62 1 3a2.5 2.5 0 0 1-2.5 2.5A2.5 2.5 0 0 1 6 13c-.567.706-1 1.847-1 3a7 7 0 0 0 7 7z"/></svg>';
+  var CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+  var lastLit = null;
+
+  function isWeekendDow(dow) { return dow === 0 || dow === 6; }
+  function dayEarned(dateObj, isToday) {
+    return isToday ? (trackedTodaySeconds() >= STREAK_MIN) : (dailyLogged(dayKeyOf(dateObj)) >= STREAK_MIN);
+  }
+  function streakEarnedToday() {
+    var ex = !!state.excludeWeekends;
+    if (ex && isWeekendDow(new Date().getDay())) return true; // weekends require nothing
+    return trackedTodaySeconds() >= STREAK_MIN;
+  }
+  function computeStreak() {
+    var ex = !!state.excludeWeekends;
+    var day = new Date(); day.setHours(0, 0, 0, 0);
+    var count = 0, first = true, guard = 0;
+    while (guard++ < 4000) {
+      if (ex && isWeekendDow(day.getDay())) { day.setDate(day.getDate() - 1); first = false; continue; }
+      if (dayEarned(day, first)) count++;
+      else if (!first) break; // a missed past weekday breaks the streak
+      first = false;
+      day.setDate(day.getDate() - 1);
+    }
+    return count;
+  }
+  function checkStreakMilestone(count) {
+    var reached = 0;
+    for (var i = 0; i < STREAK_MILESTONES.length; i++) if (count >= STREAK_MILESTONES[i]) reached = STREAK_MILESTONES[i];
+    if (reached !== (state.streakMilestone || 0)) {
+      var isUp = reached > (state.streakMilestone || 0);
+      state.streakMilestone = reached;
+      persistLocal();
+      if (isUp) enqueueCelebration({ type: "streak", days: reached });
+    }
+  }
+  function updateStreak() {
+    var count = computeStreak();
+    var lit = streakEarnedToday() && count > 0;
+    var btn = document.getElementById("streak-btn");
+    document.getElementById("streak-count").textContent = String(count);
+    btn.classList.toggle("has-streak", count > 0);
+    if (lastLit === false && lit) { btn.classList.remove("just-lit"); void btn.offsetWidth; btn.classList.add("just-lit"); }
+    lastLit = lit;
+    btn.classList.toggle("lit", lit);
+    checkStreakMilestone(count);
+    if (!document.getElementById("streak-overlay").hidden) renderStreakPopup();
+  }
+  function smallCheck() {
+    var s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("fill", "none");
+    s.setAttribute("stroke", "currentColor"); s.setAttribute("stroke-width", "3");
+    s.setAttribute("stroke-linecap", "round"); s.setAttribute("stroke-linejoin", "round");
+    var p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", "M20 6 9 17l-5-5"); s.appendChild(p);
+    return s;
+  }
+  function renderStreakPopup() {
+    var count = computeStreak();
+    var earned = streakEarnedToday();
+    document.getElementById("streak-big-num").textContent = String(count);
+    document.getElementById("streak-big").classList.toggle("lit", earned && count > 0);
+    document.getElementById("streak-desc").textContent = count === 0
+      ? "Track at least 15 minutes today to start a streak."
+      : "Track at least 15 minutes every day to keep your " + count + "-day streak alive.";
+    var host = document.getElementById("streak-week");
+    host.innerHTML = "";
+    var monday = mondayOf(new Date());
+    var todayKey = dayKeyOf(new Date());
+    var labels = ["M", "T", "W", "T", "F", "S", "S"];
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(monday); d.setDate(monday.getDate() + i);
+      var dk = dayKeyOf(d);
+      var isToday = dk === todayKey;
+      var earnedDay = isToday ? (trackedTodaySeconds() >= STREAK_MIN) : (dailyLogged(dk) >= STREAK_MIN);
+      var isRest = state.excludeWeekends && i >= 5;
+      var dayEl = el("div", "streak-day");
+      if (earnedDay) dayEl.classList.add("earned");
+      else if (isRest) dayEl.classList.add("rest");
+      if (isToday) dayEl.classList.add("today");
+      var dot = el("div", "dot");
+      if (earnedDay) dot.appendChild(smallCheck());
+      else if (isRest) dot.textContent = "–";
+      dayEl.appendChild(dot);
+      dayEl.appendChild(el("div", "dl", labels[i]));
+      host.appendChild(dayEl);
+    }
+  }
+  document.getElementById("streak-btn").addEventListener("click", function () {
+    renderStreakPopup();
+    document.getElementById("streak-overlay").hidden = false;
+  });
+  function closeStreak() { document.getElementById("streak-overlay").hidden = true; }
+  document.getElementById("streak-close").addEventListener("click", closeStreak);
+  document.getElementById("streak-overlay").addEventListener("click", function (ev) {
+    if (ev.target === this) closeStreak();
+  });
+
+  // ══ Progress / history ══
+  var progWeekKey = null, progMonth = null, progView = "overview";
+
+  function weekRangeFromKey(mk) {
+    var p = mk.split("-"); var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    var end = new Date(d); end.setDate(d.getDate() + 6);
+    var o = { month: "short", day: "numeric" };
+    return d.toLocaleDateString(undefined, o) + " – " + end.toLocaleDateString(undefined, o);
+  }
+  function weekDataFor(mk) {
+    if (mk === weekKey(new Date())) {
+      var objs = state.objectives.filter(function (o) { return o.cadence !== "daily"; })
+        .map(function (o) { return { name: o.name, goalSeconds: o.goalSeconds, spentSeconds: liveSpent(o) }; });
+      if (!objs.length) return null;
+      var g = 0, s = 0; objs.forEach(function (o) { g += o.goalSeconds; s += Math.min(o.spentSeconds, o.goalSeconds); });
+      return { objectives: objs, goalTotal: g, spentTotal: s, current: true };
+    }
+    var h = state.weekHistory[mk];
+    return h ? { objectives: h.objectives, goalTotal: h.goalTotal, spentTotal: h.spentTotal, current: false } : null;
+  }
+  function levelFor(sec) {
+    if (sec <= 0) return 0;
+    var m = sec / 60;
+    if (m < 30) return 1; if (m < 60) return 2; if (m < 120) return 3; return 4;
+  }
+  function addDaysKey(mk, days) {
+    var p = mk.split("-"); var d = new Date(+p[0], +p[1] - 1, +p[2]); d.setDate(d.getDate() + days);
+    return weekKey(d);
+  }
+
+  function renderProgress() {
+    var body = document.getElementById("progress-body");
+    body.innerHTML = "";
+    if (progView === "stats") { renderStats(body); return; }
+
+    var curWeek = weekKey(new Date());
+
+    // Weekly tracker
+    body.appendChild(el("p", "prog-section-label", "Weekly progress"));
+    var wnav = el("div", "prog-weeknav");
+    var wPrev = navButton("M15 18 9 12l6-6", function () { progWeekKey = addDaysKey(progWeekKey, -7); syncMonthToWeek(); renderProgress(); });
+    var rng = el("div", "rng", weekRangeFromKey(progWeekKey) + (progWeekKey === curWeek ? " (this week)" : ""));
+    var wNext = navButton("m9 18 6-6-6-6", function () { progWeekKey = addDaysKey(progWeekKey, 7); syncMonthToWeek(); renderProgress(); });
+    if (progWeekKey === curWeek) wNext.disabled = true;
+    wnav.appendChild(wPrev); wnav.appendChild(rng); wnav.appendChild(wNext);
+    body.appendChild(wnav);
+
+    var data = weekDataFor(progWeekKey);
+    if (!data) {
+      body.appendChild(el("p", "prog-empty", "No tracked goals for this week."));
+    } else {
+      var pct = data.goalTotal > 0 ? Math.floor((data.spentTotal / data.goalTotal) * 100) : 0;
+      var tot = el("div", "prog-total");
+      tot.appendChild(el("span", "big", pct + "%"));
+      tot.appendChild(el("span", "sub", fmtShort(data.spentTotal) + " of " + fmtShort(data.goalTotal)));
+      body.appendChild(tot);
+      var bar = el("div", "bar"); var fill = el("i");
+      fill.style.width = Math.min(100, pct) + "%"; if (pct >= 100) fill.classList.add("full");
+      bar.appendChild(fill); body.appendChild(bar);
+      var list = el("div", "prog-goal-list");
+      data.objectives.forEach(function (o) {
+        var gpct = o.goalSeconds > 0 ? Math.floor((o.spentSeconds / o.goalSeconds) * 100) : 0;
+        var g = el("div", "prog-goal");
+        var gr = el("div", "gr");
+        gr.appendChild(el("span", "gname", o.name));
+        gr.appendChild(el("span", "gpct", fmtShort(o.spentSeconds) + " / " + fmtShort(o.goalSeconds) + " · " + gpct + "%"));
+        g.appendChild(gr);
+        var gb = el("div", "bar"); var gf = el("i");
+        gf.style.width = Math.min(100, gpct) + "%"; if (gpct >= 100) gf.classList.add("full");
+        gb.appendChild(gf); g.appendChild(gb);
+        list.appendChild(g);
+      });
+      body.appendChild(list);
+    }
+
+    // Month grid
+    var mhead = el("div", "prog-monthnav");
+    mhead.style.marginTop = "22px";
+    var mPrev = navButton("M15 18 9 12l6-6", function () { progMonth = new Date(progMonth.getFullYear(), progMonth.getMonth() - 1, 1); selectWeekInMonth(); renderProgress(); });
+    mhead.appendChild(mPrev);
+    mhead.appendChild(el("div", "mlabel", progMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })));
+    var atCurMonth = progMonth.getFullYear() === new Date().getFullYear() && progMonth.getMonth() === new Date().getMonth();
+    var mNext = navButton("m9 18 6-6-6-6", function () { progMonth = new Date(progMonth.getFullYear(), progMonth.getMonth() + 1, 1); selectWeekInMonth(); renderProgress(); });
+    if (atCurMonth) mNext.disabled = true;
+    mhead.appendChild(mNext);
+    body.appendChild(mhead);
+    body.appendChild(buildMonthGrid());
+
+    var legend = el("div", "grid-legend");
+    legend.appendChild(document.createTextNode("Less"));
+    [0, 1, 2, 3, 4].forEach(function (lv) { var sw = el("span", "sw mcell lvl-" + lv); sw.style.aspectRatio = "auto"; legend.appendChild(sw); });
+    legend.appendChild(document.createTextNode("More"));
+    body.appendChild(legend);
+
+    var statBtn = el("button", "btn-secondary", "View stats");
+    statBtn.type = "button"; statBtn.style.marginTop = "18px"; statBtn.style.width = "100%";
+    statBtn.addEventListener("click", function () { progView = "stats"; renderProgress(); });
+    body.appendChild(statBtn);
+  }
+
+  function navButton(d, onClick) {
+    var b = el("button", "navbtn"); b.type = "button";
+    var s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("fill", "none"); s.setAttribute("stroke", "currentColor");
+    s.setAttribute("stroke-width", "2.2"); s.setAttribute("stroke-linecap", "round"); s.setAttribute("stroke-linejoin", "round");
+    var p = document.createElementNS("http://www.w3.org/2000/svg", "path"); p.setAttribute("d", d); s.appendChild(p);
+    b.appendChild(s);
+    b.addEventListener("click", function () { if (!b.disabled) onClick(); });
+    return b;
+  }
+  function syncMonthToWeek() {
+    var p = progWeekKey.split("-"); var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    d.setDate(d.getDate() + 3); // midweek, so the month reflects where most of the week sits
+    progMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+  }
+  function selectWeekInMonth() {
+    // pick the last week of the viewed month that isn't in the future
+    var last = new Date(progMonth.getFullYear(), progMonth.getMonth() + 1, 0);
+    var cur = weekKey(new Date());
+    var mk = weekKey(last);
+    while (mk > cur) mk = addDaysKey(mk, -7);
+    // keep it within the viewed month if possible
+    progWeekKey = mk;
+  }
+  function buildMonthGrid() {
+    var grid = el("div", "month-grid");
+    ["M", "T", "W", "T", "F", "S", "S"].forEach(function (w) { grid.appendChild(el("div", "wd", w)); });
+    var first = new Date(progMonth.getFullYear(), progMonth.getMonth(), 1);
+    var start = mondayOf(first);
+    var monthEnd = new Date(progMonth.getFullYear(), progMonth.getMonth() + 1, 0);
+    var todayKey = dayKeyOf(new Date());
+    var cursor = new Date(start);
+    var guard = 0;
+    while (cursor <= monthEnd && guard++ < 12) {
+      var bandKey = weekKey(cursor);
+      var band = el("div", "week-band");
+      if (bandKey === progWeekKey) band.classList.add("selected");
+      (function (bk) { band.addEventListener("click", function () { progWeekKey = bk; renderProgress(); }); })(bandKey);
+      for (var i = 0; i < 7; i++) {
+        var d = new Date(cursor); d.setDate(cursor.getDate() + i);
+        var inMonth = d.getMonth() === progMonth.getMonth();
+        var cell;
+        if (!inMonth) { cell = el("div", "mcell empty"); }
+        else {
+          var dk = dayKeyOf(d);
+          var lv = d > new Date() ? 0 : levelFor(dailyLogged(dk));
+          cell = el("div", "mcell lvl-" + lv, String(d.getDate()));
+          if (dk === todayKey) cell.style.outline = "1.5px solid var(--accent)";
+        }
+        band.appendChild(cell);
+      }
+      grid.appendChild(band);
+      cursor.setDate(cursor.getDate() + 7);
+    }
+    return grid;
+  }
+
+  function weeklyHoursSeries(n) {
+    var arr = []; var monday = mondayOf(new Date());
+    for (var i = n - 1; i >= 0; i--) {
+      var wm = new Date(monday); wm.setDate(monday.getDate() - i * 7);
+      var sum = 0;
+      for (var d = 0; d < 7; d++) { var day = new Date(wm); day.setDate(wm.getDate() + d); sum += dailyLogged(dayKeyOf(day)); }
+      arr.push({ monday: wm, seconds: sum });
+    }
+    return arr;
+  }
+  function renderStats(body) {
+    var back = el("button", "btn-secondary", "‹ Back");
+    back.type = "button"; back.style.marginBottom = "6px";
+    back.addEventListener("click", function () { progView = "overview"; renderProgress(); });
+    body.appendChild(back);
+    body.appendChild(el("p", "prog-section-label", "Hours tracked · last 8 weeks"));
+    var series = weeklyHoursSeries(8);
+    var max = series.reduce(function (m, w) { return Math.max(m, w.seconds); }, 1);
+    var chart = el("div", "stat-bars");
+    series.forEach(function (w, idx) {
+      var col = el("div", "stat-bar");
+      var bar = el("div", "col" + (w.seconds === 0 ? " dim" : ""));
+      bar.style.height = Math.max(2, Math.round((w.seconds / max) * 100)) + "%";
+      col.appendChild(el("div", "val", w.seconds > 0 ? fmtShort(w.seconds) : ""));
+      col.appendChild(bar);
+      col.appendChild(el("div", "cap", (w.monday.getMonth() + 1) + "/" + w.monday.getDate()));
+      chart.appendChild(col);
+    });
+    body.appendChild(chart);
+
+    var table = el("table", "stat-table");
+    var thead = el("tr");
+    ["Week", "Logged", "Goal %"].forEach(function (h, i) { var th = el("th", i ? "num" : null, h); if (i) th.className = "num"; thead.appendChild(th); });
+    table.appendChild(thead);
+    series.slice().reverse().forEach(function (w) {
+      var mk = weekKey(w.monday);
+      var data = weekDataFor(mk);
+      var pct = data && data.goalTotal > 0 ? Math.floor((data.spentTotal / data.goalTotal) * 100) + "%" : "—";
+      var tr = el("tr");
+      tr.appendChild(el("td", null, weekRangeFromKey(mk)));
+      tr.appendChild(el("td", "num", fmtShort(w.seconds)));
+      tr.appendChild(el("td", "num", pct));
+      table.appendChild(tr);
+    });
+    body.appendChild(table);
+  }
+
+  document.getElementById("progress-btn").addEventListener("click", function () {
+    progWeekKey = weekKey(new Date());
+    progMonth = new Date();
+    progMonth = new Date(progMonth.getFullYear(), progMonth.getMonth(), 1);
+    progView = "overview";
+    renderProgress();
+    document.getElementById("progress-overlay").hidden = false;
+  });
+  function closeProgress() { document.getElementById("progress-overlay").hidden = true; }
+  document.getElementById("progress-close").addEventListener("click", closeProgress);
+  document.getElementById("progress-overlay").addEventListener("click", function (ev) {
+    if (ev.target === this) closeProgress();
+  });
+
+  // ══ Pomodoro ══
+  var pomoTargetId = null, pomoHasTotal = false;
+
+  function startPomodoro(id, focusSec, breakSec, totalSec) {
+    var o = byId(id); if (!o) return;
+    state.objectives.forEach(function (x) { if (x.id !== id) pauseObjective(x); });
+    if (!o.running) { o.running = true; o.startedAt = Date.now(); }
+    var now = Date.now();
+    state.pomodoro = {
+      id: id, focusSec: focusSec, breakSec: breakSec,
+      hasTotal: totalSec > 0, totalFocusRemaining: totalSec > 0 ? totalSec : 0,
+      phase: "focus", phaseStartedAt: now, phaseEndsAt: now + focusSec * 1000
+    };
+    save();
+    render();
+  }
+  function flashCard(id) {
+    var card = cardsEl.querySelector('.card[data-id="' + id + '"]');
+    if (!card) return;
+    card.classList.remove("flash"); void card.offsetWidth; card.classList.add("flash");
+    setTimeout(function () { card.classList.remove("flash"); }, 1900);
+  }
+  function endPomodoro(completed) {
+    var p = state.pomodoro; if (!p) return;
+    var o = byId(p.id);
+    if (o && o.running) pauseObjective(o);
+    state.pomodoro = null;
+    save();
+    render();
+    if (completed) enqueueCelebration({ type: "pomodoro", name: o ? o.name : null });
+  }
+  // Advance pomodoro phases; returns true if it re-rendered.
+  function pomodoroTick() {
+    var p = state.pomodoro; if (!p) return false;
+    var o = byId(p.id);
+    if (!o) { state.pomodoro = null; render(); return true; }
+    var now = Date.now();
+    if (p.phase === "focus") {
+      if (p.hasTotal && (now - p.phaseStartedAt) / 1000 >= p.totalFocusRemaining) { endPomodoro(true); return true; }
+      if (now >= p.phaseEndsAt) {
+        if (p.hasTotal) p.totalFocusRemaining = Math.max(0, p.totalFocusRemaining - p.focusSec);
+        pauseObjective(o);
+        if (p.hasTotal && p.totalFocusRemaining <= 0) { endPomodoro(true); return true; }
+        p.phase = "break"; p.phaseStartedAt = now; p.phaseEndsAt = now + p.breakSec * 1000;
+        persistLocal(); render(); flashCard(p.id);
+        return true;
+      }
+    } else {
+      if (now >= p.phaseEndsAt) {
+        o.running = true; o.startedAt = now;
+        p.phase = "focus"; p.phaseStartedAt = now; p.phaseEndsAt = now + p.focusSec * 1000;
+        persistLocal(); render(); flashCard(p.id);
+        return true;
+      }
+    }
+    return false;
+  }
+  function buildPomodoroCard(card, o) {
+    card.classList.add("pomo");
+    var p = state.pomodoro;
+    if (p.phase === "break") card.classList.add("on-break");
+
+    var top = el("div", "top");
+    var tw = el("div");
+    var tl = el("div", "title-line");
+    tl.appendChild(el("h2", null, o.name));
+    tl.appendChild(el("span", "tag", "Pomodoro"));
+    tw.appendChild(tl);
+    tw.appendChild(el("p", "goal-note", (o.cadence === "daily" ? "Daily goal: " : "Weekly goal: ") + fmtShort(o.goalSeconds)));
+    top.appendChild(tw);
+    card.appendChild(top);
+
+    var phase = el("p", "pomo-phase");
+    phase.setAttribute("data-role", "pomo-phase");
+    card.appendChild(phase);
+    var main = el("div", "pomo-main");
+    main.setAttribute("data-role", "pomo-main");
+    card.appendChild(main);
+    if (p.hasTotal) {
+      var tot = el("p", "pomo-total");
+      tot.setAttribute("data-role", "pomo-total");
+      card.appendChild(tot);
+    }
+    var sl = el("p", "spent-line");
+    sl.setAttribute("data-role", "spent");
+    card.appendChild(sl);
+
+    var actions = el("div", "actions");
+    var endBtn = el("button", "btn-pause", "End focus");
+    endBtn.type = "button";
+    endBtn.addEventListener("click", function () { endPomodoro(false); });
+    actions.appendChild(endBtn);
+    card.appendChild(actions);
+
+    paintPomodoro(card, o);
+  }
+  function paintPomodoro(card, o) {
+    var p = state.pomodoro; if (!p) return;
+    var now = Date.now();
+    var phaseEl = card.querySelector('[data-role="pomo-phase"]');
+    if (phaseEl) {
+      phaseEl.textContent = p.phase === "focus" ? "Focus!" : "Enjoy your break";
+      phaseEl.className = "pomo-phase " + (p.phase === "focus" ? "focus" : "break");
+    }
+    card.classList.toggle("on-break", p.phase === "break");
+    var main = card.querySelector('[data-role="pomo-main"]');
+    if (main) main.textContent = fmtClock(Math.max(0, (p.phaseEndsAt - now) / 1000));
+    if (p.hasTotal) {
+      var left = p.totalFocusRemaining - (p.phase === "focus" ? (now - p.phaseStartedAt) / 1000 : 0);
+      var tot = card.querySelector('[data-role="pomo-total"]');
+      if (tot) { tot.innerHTML = ""; tot.appendChild(el("strong", null, fmtClock(Math.max(0, left)))); tot.appendChild(document.createTextNode(" focus left")); }
+    }
+    var sl = card.querySelector('[data-role="spent"]');
+    if (sl) sl.textContent = spentLineText(o);
+  }
+
+  function openPomodoroSetup(id) {
+    pomoTargetId = id;
+    pomoHasTotal = false;
+    document.getElementById("pomo-total-toggle").classList.remove("on");
+    document.getElementById("pomo-total-row").hidden = true;
+    document.getElementById("pomo-focus").value = "25";
+    document.getElementById("pomo-break").value = "5";
+    document.getElementById("pomo-overlay").hidden = false;
+  }
+  function closePomoSetup() { document.getElementById("pomo-overlay").hidden = true; }
+  document.getElementById("pomo-close").addEventListener("click", closePomoSetup);
+  document.getElementById("pomo-cancel").addEventListener("click", closePomoSetup);
+  document.getElementById("pomo-overlay").addEventListener("click", function (ev) { if (ev.target === this) closePomoSetup(); });
+  document.getElementById("pomo-total-toggle").addEventListener("click", function () {
+    pomoHasTotal = !pomoHasTotal;
+    this.classList.toggle("on", pomoHasTotal);
+    document.getElementById("pomo-total-row").hidden = !pomoHasTotal;
+  });
+  document.getElementById("pomo-form").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (!pomoTargetId) return;
+    var f = parseInt(document.getElementById("pomo-focus").value, 10); if (isNaN(f) || f < 1) f = 25;
+    var b = parseInt(document.getElementById("pomo-break").value, 10); if (isNaN(b) || b < 1) b = 5;
+    var total = 0;
+    if (pomoHasTotal) {
+      var th = parseInt(document.getElementById("pomo-total-h").value, 10) || 0;
+      var tm = parseInt(document.getElementById("pomo-total-m").value, 10) || 0;
+      total = th * 3600 + tm * 60;
+    }
+    closePomoSetup();
+    startPomodoro(pomoTargetId, f * 60, b * 60, total);
+  });
+
+  // Shared Escape handling for the new modals.
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key !== "Escape") return;
+    [["streak-overlay", closeStreak], ["progress-overlay", closeProgress], ["pomo-overlay", closePomoSetup]].forEach(function (pair) {
+      var node = document.getElementById(pair[0]);
+      if (node && !node.hidden) pair[1]();
+    });
+  });
+
   // ── Boot ──
   load();
   checkRollover();
@@ -2183,6 +2994,7 @@
   setGreeting();
   setMotiv();
   render();
+  updateStreak();
   maybeOnboard();
   updateSyncUI();
   pullRemote();

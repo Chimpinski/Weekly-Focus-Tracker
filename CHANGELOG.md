@@ -12,6 +12,13 @@ project uses [semantic versioning](https://semver.org/).
 
 _Nothing yet._
 
+## [1.3.0] - 2026-07-10
+
+### Added
+- **Progress history.** A new Progress button opens a tracker where you can look back at any past week — total percentage and per-goal breakdown — so a Monday reset no longer feels like losing everything. It includes a GitHub-style **monthly activity grid** (each day shaded by how much you tracked), with the selected week highlighted; moving between months moves the weekly view with it. A **Stats** view charts hours tracked over the last eight weeks with a supporting table.
+- **Streaks.** A flame in the header lights up once you've tracked at least 15 minutes for the day and grows your day count. Tap it for a popup with your streak number and this week's days. Milestone celebrations fire at 3, 5, 7, 10, 14, 30, 50, 100+ days. A setting lets you **skip weekends**, so not working Saturday/Sunday won't break your streak.
+- **Pomodoro mode.** Start a focus/break cycle on any objective: set your focus and break lengths and an optional total focus time. The card becomes a Pomodoro card with the current phase timer, a total-time-left readout, and a "Focus!" / "Enjoy your break" label; it flashes when phases switch. Only focus blocks count toward your goal, and finishing your total time shows a "Focus session complete" celebration.
+
 ## [1.2.1] - 2026-07-08
 
 ### Added
@@ -66,7 +73,8 @@ _Nothing yet._
 - Installable PWA (web manifest, app icons, offline service worker).
 - An unsigned `.ipa` attached to the release for personal sideloading.
 
-[Unreleased]: https://github.com/Chimpinski/Weekly-Focus-Tracker/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/Chimpinski/Weekly-Focus-Tracker/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.3.0
 [1.2.1]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.2.1
 [1.2.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.2.0
 [1.1.1]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.1.1

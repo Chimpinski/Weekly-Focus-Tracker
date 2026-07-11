@@ -22,6 +22,9 @@ Toggle between the two progress styles and light/dark themes from Settings, and 
 - **Manual logging** — forgot to start the timer? Use **+ Log time** to add (or subtract) hours and minutes by hand.
 - **Live progress** — each objective shows a countdown, percentage of goal, and a bar/ring that turns green at 100%. Keep going past the goal and it flips to a green count-up timer with a **Goal met!** badge.
 - **Weekly summary** — combined time logged vs. planned across your weekly objectives (time past any one goal doesn't inflate the total).
+- **Progress history** — a Progress view to revisit any past week's achievement (total and per-goal), a GitHub-style monthly activity grid, and a stats chart of hours over the last eight weeks. Your work isn't gone when the week resets.
+- **Streaks** — a header flame that lights once you log 15 minutes for the day and grows your day count, with milestone celebrations and an optional "skip weekends" rule.
+- **Pomodoro mode** — start focus/break cycles on any objective with an optional total focus time; only focus blocks count toward your goal.
 - **Rewarding completions** — a congratulations popup when you finish an objective or your whole week; daily goals glow when hit.
 - **Cross-device sync, no account** — create a sync code on one device and enter it on another; both show the same timers (even a running one). The code is the only key to your data, so treat it like a password.
 - **Automatic resets** — weekly goals zero out every Monday, daily goals every midnight; your goals themselves stay.
