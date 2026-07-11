@@ -824,10 +824,17 @@
   .streak-big .num {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    padding-top: 14px;
-    font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums;
-    color: #fff;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    padding-top: 46px; /* sink into the flame's belly */
+    font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    /* unlit (gray flame): keep the number legible */
+    color: #c8dad5;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  }
+  /* lit (green flame): carve the number into the flame */
+  .streak-big.lit .num {
+    color: rgba(7, 22, 18, 0.55);
+    text-shadow: 0 1.5px 0 rgba(255, 255, 255, 0.32), 0 -1px 1px rgba(0, 0, 0, 0.18);
   }
   .streak-desc { color: var(--muted); font-size: 14px; margin: 0; line-height: 1.5; }
   .streak-week { display: flex; justify-content: space-between; gap: 6px; width: 100%; margin-top: 4px; }
@@ -1159,7 +1166,7 @@
           <span class="field-label">Focus block</span>
           <div class="time-row">
             <div class="time-field"><span class="field-sub">Minutes</span>
-              <input type="number" id="pomo-focus" min="1" max="180" step="5" value="25" inputmode="numeric" pattern="[0-9]*"></div>
+              <input type="number" id="pomo-focus" min="5" max="180" step="5" value="25" inputmode="numeric" pattern="[0-9]*"></div>
           </div>
         </div>
         <div class="field-block">
@@ -2577,7 +2584,7 @@
     document.getElementById("streak-big").classList.toggle("lit", earned && count > 0);
     document.getElementById("streak-desc").textContent = count === 0
       ? "Track at least 15 minutes today to start a streak."
-      : "Track at least 15 minutes every day to keep your " + count + "-day streak alive.";
+      : "Track at least 15 minutes every day to keep your streak alive.";
     var host = document.getElementById("streak-week");
     host.innerHTML = "";
     var monday = mondayOf(new Date());

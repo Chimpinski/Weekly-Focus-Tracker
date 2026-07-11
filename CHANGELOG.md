@@ -12,6 +12,13 @@ project uses [semantic versioning](https://semver.org/).
 
 _Nothing yet._
 
+## [1.3.1] - 2026-07-10
+
+### Changed
+- The streak number now looks engraved into the flame instead of sitting on top of it.
+- Pomodoro focus length now steps in clean multiples of 5 (25, 30, 35, …) instead of rejecting values like 25.
+- Simplified the streak popup description ("keep your streak alive").
+
 ## [1.3.0] - 2026-07-10
 
 ### Added
@@ -73,7 +80,8 @@ _Nothing yet._
 - Installable PWA (web manifest, app icons, offline service worker).
 - An unsigned `.ipa` attached to the release for personal sideloading.
 
-[Unreleased]: https://github.com/Chimpinski/Weekly-Focus-Tracker/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/Chimpinski/Weekly-Focus-Tracker/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.3.1
 [1.3.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.3.0
 [1.2.1]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.2.1
 [1.2.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.2.0
