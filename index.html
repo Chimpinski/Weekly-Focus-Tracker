@@ -345,7 +345,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .card .actions { display: flex; gap: 10px; align-items: center; }
+  .card .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
   /* ── Buttons ── */
   button {
@@ -948,6 +948,108 @@
   }
   .toggle.on { background: var(--accent); }
   .toggle.on::after { transform: translateX(19px); }
+
+  /* ── Total-objective panel (right-side ring toward a limited task's total time) ── */
+  .card-row { display: flex; gap: 14px; align-items: flex-start; }
+  .card-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+  .total-panel {
+    flex-shrink: 0;
+    width: 104px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 8px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-2);
+    align-self: stretch;
+    justify-content: center;
+  }
+  .total-panel .total-cap {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint);
+  }
+  .total-ring { position: relative; width: 64px; height: 64px; }
+  .total-ring svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
+  .total-ring-track { fill: none; stroke: var(--track); stroke-width: 6; }
+  .total-ring-arc {
+    fill: none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round;
+    transition: stroke-dasharray 0.4s ease;
+  }
+  .total-ring-arc.full { stroke: var(--done); }
+  @media (prefers-reduced-motion: reduce) { .total-ring-arc { transition: none; } }
+  .total-ring-pct {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 700; color: var(--accent);
+  }
+  .total-panel.done .total-ring-pct { color: var(--done); }
+  .total-meta { text-align: center; line-height: 1.25; }
+  .total-meta .total-left { font-size: 12px; font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .total-meta .total-of { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .total-meta .total-since { font-size: 10px; color: var(--faint); margin-top: 2px; }
+  .total-panel.done .total-left { color: var(--done); }
+
+  /* ── Full-screen single-task view ── */
+  .fs-btn svg { width: 15px; height: 15px; }
+  body.fs-mode { overflow: hidden; }
+  body.fs-mode .wrap > header,
+  body.fs-mode #summary,
+  body.fs-mode footer { display: none; }
+  body.fs-mode .fab { display: none; }
+  body.fs-mode .wrap {
+    padding-top: calc(16px + env(safe-area-inset-top));
+    min-height: 100vh; justify-content: center;
+  }
+  body.fs-mode .cards { min-height: 82vh; justify-content: center; }
+  body.fs-mode .card {
+    min-height: 82vh; justify-content: center; gap: 22px; padding: 26px 20px;
+  }
+  body.fs-mode .card .icon-btns .btn-ghost { display: none; } /* hide Edit/Delete in full screen */
+  body.fs-mode .card .top { justify-content: space-between; }
+  body.fs-mode .card h2 { font-size: 22px; }
+  body.fs-mode .card-row { flex-direction: column; align-items: stretch; gap: 22px; }
+  body.fs-mode .readout { justify-content: center; }
+  body.fs-mode .card .remaining { font-size: clamp(52px, 17vw, 104px); }
+  body.fs-mode .card.goal-met .remaining { font-size: clamp(34px, 11vw, 60px); }
+  body.fs-mode .ring-wrap { width: min(320px, 74vw); height: min(320px, 74vw); }
+  body.fs-mode .ring-time { font-size: clamp(34px, 9vw, 54px); }
+  body.fs-mode .ring-pct { font-size: 18px; }
+  body.fs-mode .pomo-main { font-size: clamp(60px, 22vw, 128px); }
+  body.fs-mode .pomo-phase { font-size: 15px; }
+  body.fs-mode .actions { justify-content: center; }
+  body.fs-mode .btn-primary,
+  body.fs-mode .btn-pause { padding: 15px 30px; font-size: 17px; }
+  body.fs-mode .total-panel { width: 100%; max-width: 300px; margin: 0 auto; flex-direction: row; justify-content: center; gap: 16px; padding: 16px; }
+  body.fs-mode .total-ring { width: 88px; height: 88px; }
+  body.fs-mode .total-ring-pct { font-size: 20px; }
+
+  /* ── Announcement overlay (glowing word + stopwatch beeps) ── */
+  .announce-overlay {
+    position: fixed; inset: 0; z-index: 70;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    background: rgba(8, 14, 12, 0.74);
+    backdrop-filter: blur(3px);
+  }
+  .announce-overlay[hidden] { display: none; }
+  .announce-word {
+    font-size: clamp(44px, 15vw, 128px);
+    font-weight: 800; letter-spacing: 0.01em; text-align: center; text-wrap: balance;
+    text-transform: uppercase; line-height: 1.05;
+    color: var(--accent);
+  }
+  .announce-overlay.break .announce-word { color: #6fb3ff; }
+  @keyframes wordGlow {
+    0%   { opacity: 0.32; text-shadow: none; transform: scale(0.97); }
+    28%  { opacity: 1; text-shadow: 0 0 26px currentColor, 0 0 70px currentColor; transform: scale(1.05); }
+    55%  { opacity: 0.4; text-shadow: none; transform: scale(0.99); }
+    100% { opacity: 0.4; text-shadow: none; transform: scale(0.99); }
+  }
+  .announce-word.glow3 { animation: wordGlow 0.7s ease-in-out 3; }
+  @media (prefers-reduced-motion: reduce) {
+    .announce-word.glow3 { animation: none; opacity: 1; text-shadow: 0 0 26px currentColor; }
+  }
 </style>
 </head>
 <body>
@@ -1166,7 +1268,7 @@
           <span class="field-label">Focus block</span>
           <div class="time-row">
             <div class="time-field"><span class="field-sub">Minutes</span>
-              <input type="number" id="pomo-focus" min="5" max="180" step="5" value="25" inputmode="numeric" pattern="[0-9]*"></div>
+              <input type="number" id="pomo-focus" min="1" max="180" step="1" value="25" inputmode="numeric" pattern="[0-9]*"></div>
           </div>
         </div>
         <div class="field-block">
@@ -1185,7 +1287,7 @@
             <div class="time-field"><span class="field-sub">Hours</span>
               <input type="number" id="pomo-total-h" min="0" max="24" step="1" value="2" inputmode="numeric" pattern="[0-9]*"></div>
             <div class="time-field"><span class="field-sub">Minutes</span>
-              <input type="number" id="pomo-total-m" min="0" max="59" step="5" value="0" inputmode="numeric" pattern="[0-9]*"></div>
+              <input type="number" id="pomo-total-m" min="0" max="59" step="1" value="0" inputmode="numeric" pattern="[0-9]*"></div>
           </div>
           <p class="field-hint">Only focus blocks count toward this total. When it runs out, you're done.</p>
         </div>
@@ -1195,6 +1297,22 @@
         <button class="btn-secondary" type="button" id="pomo-cancel">Cancel</button>
       </div>
     </form>
+  </div>
+</div>
+
+<div class="announce-overlay" id="announce-overlay" hidden aria-live="assertive">
+  <div class="announce-word" id="announce-word"></div>
+</div>
+
+<div class="modal-overlay" id="total-overlay" hidden>
+  <div class="celebrate" role="dialog" aria-modal="true" aria-labelledby="total-title">
+    <div class="burst">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <h3 id="total-title">Objective complete!</h3>
+    <p id="total-msg"></p>
+    <button class="btn-primary" type="button" id="total-clear">Clear &amp; start fresh</button>
+    <button class="btn-ghost" type="button" id="total-keep">Keep it as is</button>
   </div>
 </div>
 
@@ -1209,6 +1327,10 @@
   var RING_R = 52;
   var RING_C = 2 * Math.PI * RING_R;
   var RING_TRACK = RING_C * 0.75;
+
+  // Small total-progress ring (full circle) used on the per-objective total panel.
+  var TR_R = 26;
+  var TR_C = 2 * Math.PI * TR_R;
 
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
@@ -1261,6 +1383,11 @@
       if (!o.dayKey) o.dayKey = today;
       if (typeof o.celebratedWeekly === "undefined") o.celebratedWeekly = weeklyMet(o);
       if (typeof o.celebratedDaily === "undefined") o.celebratedDaily = dailyMet(o);
+      // Total-objective (limited-task) fields.
+      if (typeof o.totalGoalSeconds !== "number") o.totalGoalSeconds = 0;
+      if (typeof o.totalSpentSeconds !== "number") o.totalSpentSeconds = 0;
+      if (typeof o.celebratedTotal === "undefined") o.celebratedTotal = totalMet(o);
+      if (typeof o.totalStartKey === "undefined") o.totalStartKey = null;
     });
     if (typeof state.celebratedWeekTotal === "undefined") state.celebratedWeekTotal = weekTotalMet();
     if (!state.dailyLog || typeof state.dailyLog !== "object") state.dailyLog = {};   // dayKey -> seconds tracked (all objectives)
@@ -1339,6 +1466,7 @@
       if (o.running && o.startedAt) {
         recordDaily(o.startedAt, now);
         o.spentSeconds += Math.max(0, (now - o.startedAt) / 1000);
+        o.totalSpentSeconds = (o.totalSpentSeconds || 0) + Math.max(0, (now - o.startedAt) / 1000);
         o.daySpentSeconds = (o.daySpentSeconds || 0) + Math.max(0, (now - Math.max(o.startedAt, startOfTodayMs())) / 1000);
         o.startedAt = now; // keep the timer running into the new week
       }
@@ -1385,6 +1513,13 @@
   // The metric a card's main progress bar tracks: daily for daily objectives, else weekly.
   function primarySpent(o) { return o.cadence === "daily" ? liveDaySpent(o) : liveSpent(o); }
   function weeklyMet(o) { return o.cadence !== "daily" && o.goalSeconds > 0 && liveSpent(o) >= o.goalSeconds; }
+  // Cumulative time toward a limited task's total goal — never reset by the weekly rollover.
+  function liveTotalSpent(o) {
+    var s = o.totalSpentSeconds || 0;
+    if (o.running && o.startedAt) s += Math.max(0, (Date.now() - o.startedAt) / 1000);
+    return s;
+  }
+  function totalMet(o) { return o && o.totalGoalSeconds > 0 && liveTotalSpent(o) >= o.totalGoalSeconds; }
   function dailyGoalOf(o) { return o.cadence === "daily" ? o.goalSeconds : (o.dailyGoalSeconds || 0); }
   function dailyMet(o) { var g = dailyGoalOf(o); return g > 0 && liveDaySpent(o) >= g; }
   function computeWeekTotals() {
@@ -1421,13 +1556,21 @@
     if (o.goalSeconds <= 0) return 0;
     return (liveSpent(o) / o.goalSeconds) * 100;
   }
+  function shortDate(key) {
+    if (!key) return "";
+    var p = key.split("-");
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
 
   // ── Actions ──
   function pauseObjective(o) {
     if (!o.running) return;
     var now = Date.now();
     recordDaily(o.startedAt, now); // log the elapsed span to the daily activity log
-    o.spentSeconds += Math.max(0, (now - o.startedAt) / 1000);
+    var elapsed = Math.max(0, (now - o.startedAt) / 1000);
+    o.spentSeconds += elapsed;
+    o.totalSpentSeconds = (o.totalSpentSeconds || 0) + elapsed; // cumulative, survives weekly reset
     // Daily bucket: only the portion since midnight counts toward today.
     o.daySpentSeconds = (o.daySpentSeconds || 0) + Math.max(0, (now - Math.max(o.startedAt, startOfTodayMs())) / 1000);
     o.dayKey = dayKeyOf(new Date());
@@ -1435,6 +1578,7 @@
     o.startedAt = null;
   }
   function beginTask(id) {
+    unlockAudio();
     state.objectives.forEach(function (o) {
       if (o.id === id) {
         if (!o.running) { o.running = true; o.startedAt = Date.now(); }
@@ -1465,6 +1609,15 @@
   var cardsEl = document.getElementById("cards");
   var editingId = null;
   var loggingId = null;
+  var fullscreenId = null;
+
+  function toggleFullscreen(id) {
+    fullscreenId = (fullscreenId === id) ? null : id;
+    if (fullscreenId) { loggingId = null; editingId = null; deleteArmed = null; }
+    render();
+    window.scrollTo(0, 0);
+  }
+  function exitFullscreen() { if (fullscreenId) { fullscreenId = null; render(); } }
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -1538,8 +1691,19 @@
     });
     btns.appendChild(editBtn);
     btns.appendChild(delBtn);
+    btns.appendChild(makeFsBtn(o.id));
     top.appendChild(btns);
     card.appendChild(top);
+
+    // Body: main content column, plus an optional right-side total-goal panel.
+    var content = card;
+    if (o.totalGoalSeconds > 0) {
+      var row = el("div", "card-row");
+      content = el("div", "card-content");
+      row.appendChild(content);
+      row.appendChild(buildTotalPanel(o));
+      card.appendChild(row);
+    }
 
     // Linear progress (readout + bar)
     var linear = el("div", "linear-only");
@@ -1556,10 +1720,10 @@
     fill.setAttribute("data-role", "bar");
     bar.appendChild(fill);
     linear.appendChild(bar);
-    card.appendChild(linear);
+    content.appendChild(linear);
 
     // Circular progress (ring)
-    card.appendChild(buildRing());
+    content.appendChild(buildRing());
 
     // Daily sub-goal (weekly objectives with an optional daily target)
     var sub = el("div", "daily-sub");
@@ -1577,12 +1741,12 @@
     subFill.setAttribute("data-role", "daily-bar");
     subBar.appendChild(subFill);
     sub.appendChild(subBar);
-    card.appendChild(sub);
+    content.appendChild(sub);
 
     // Spent line
     var spentLine = el("p", "spent-line");
     spentLine.setAttribute("data-role", "spent");
-    card.appendChild(spentLine);
+    content.appendChild(spentLine);
 
     paintProgress(card, o);
 
@@ -1640,7 +1804,7 @@
     hLabel.appendChild(hInput);
     var mLabel = el("label", null, "Minutes");
     var mInput = el("input");
-    mInput.type = "number"; mInput.min = "0"; mInput.max = "59"; mInput.step = "5"; mInput.value = "30";
+    mInput.type = "number"; mInput.min = "0"; mInput.max = "59"; mInput.step = "1"; mInput.value = "30";
     mInput.setAttribute("inputmode", "numeric"); mInput.setAttribute("pattern", "[0-9]*");
     mLabel.appendChild(mInput);
     var actions = el("div", "form-actions");
@@ -1662,6 +1826,7 @@
       var delta = (h * 3600 + m * 60) * sign;
       if (delta === 0) return;
       o.spentSeconds = Math.max(0, o.spentSeconds + delta);
+      o.totalSpentSeconds = Math.max(0, (o.totalSpentSeconds || 0) + delta); // cumulative total
       o.daySpentSeconds = Math.max(0, (o.daySpentSeconds || 0) + delta); // assume the time was today
       o.dayKey = dayKeyOf(new Date());
       var dk = dayKeyOf(new Date());
@@ -1715,6 +1880,64 @@
     center.appendChild(rp);
     wrap.appendChild(center);
     return wrap;
+  }
+
+  function strokeIcon(d) {
+    var NS = "http://www.w3.org/2000/svg";
+    var s = document.createElementNS(NS, "svg");
+    s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("fill", "none");
+    s.setAttribute("stroke", "currentColor"); s.setAttribute("stroke-width", "2");
+    s.setAttribute("stroke-linecap", "round"); s.setAttribute("stroke-linejoin", "round");
+    s.setAttribute("aria-hidden", "true");
+    var p = document.createElementNS(NS, "path"); p.setAttribute("d", d); s.appendChild(p);
+    return s;
+  }
+  function expandIcon() { return strokeIcon("M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"); }
+  function compressIcon() { return strokeIcon("M4 8h3a1 1 0 0 0 1-1V4M20 8h-3a1 1 0 0 1-1-1V4M4 16h3a1 1 0 0 1 1 1v3M20 16h-3a1 1 0 0 0-1 1v3"); }
+  function makeFsBtn(id) {
+    var b = el("button", "ctrl-btn fs-btn"); b.type = "button";
+    var active = fullscreenId === id;
+    b.setAttribute("aria-label", active ? "Exit full screen" : "Full screen");
+    b.setAttribute("title", active ? "Exit full screen" : "Full screen");
+    b.appendChild(active ? compressIcon() : expandIcon());
+    b.addEventListener("click", function (ev) { ev.stopPropagation(); toggleFullscreen(id); });
+    return b;
+  }
+
+  // Small full-circle ring tracking progress toward a limited task's total time.
+  function buildTotalRing() {
+    var NS = "http://www.w3.org/2000/svg";
+    var wrap = el("div", "total-ring");
+    var svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 60 60"); svg.setAttribute("aria-hidden", "true");
+    var track = document.createElementNS(NS, "circle");
+    track.setAttribute("class", "total-ring-track");
+    track.setAttribute("cx", "30"); track.setAttribute("cy", "30"); track.setAttribute("r", String(TR_R));
+    var arc = document.createElementNS(NS, "circle");
+    arc.setAttribute("class", "total-ring-arc");
+    arc.setAttribute("data-role", "total-ring-arc");
+    arc.setAttribute("cx", "30"); arc.setAttribute("cy", "30"); arc.setAttribute("r", String(TR_R));
+    arc.setAttribute("stroke-dasharray", "0 " + TR_C.toFixed(2));
+    svg.appendChild(track); svg.appendChild(arc);
+    wrap.appendChild(svg);
+    var pct = el("div", "total-ring-pct"); pct.setAttribute("data-role", "total-ring-pct"); pct.textContent = "0%";
+    wrap.appendChild(pct);
+    return wrap;
+  }
+  function buildTotalPanel(o) {
+    var p = el("div", "total-panel");
+    p.appendChild(el("span", "total-cap", "Total"));
+    p.appendChild(buildTotalRing());
+    var meta = el("div", "total-meta");
+    var left = el("div", "total-left"); left.setAttribute("data-role", "total-left");
+    var of = el("div", "total-of"); of.setAttribute("data-role", "total-of");
+    meta.appendChild(left); meta.appendChild(of);
+    if (o && o.totalStartKey) {
+      var since = el("div", "total-since"); since.setAttribute("data-role", "total-since");
+      meta.appendChild(since);
+    }
+    p.appendChild(meta);
+    return p;
   }
 
   // Update every visual (linear + ring) within a card element from an objective's state.
@@ -1772,6 +1995,32 @@
         sub.hidden = true;
       }
     }
+
+    // Total-objective panel (progress toward a limited task's whole time)
+    var tPanel = card.querySelector(".total-panel");
+    if (tPanel && o.totalGoalSeconds > 0) {
+      var tSpent = liveTotalSpent(o);
+      var tGoal = o.totalGoalSeconds;
+      var tPct = tGoal > 0 ? (tSpent / tGoal) * 100 : 0;
+      var tLeft = Math.max(0, tGoal - tSpent);
+      var done = tPct >= 100;
+      var tArc = card.querySelector('[data-role="total-ring-arc"]');
+      if (tArc) {
+        var tf = Math.max(0, Math.min(1, tPct / 100));
+        var tlen = tf * TR_C;
+        tArc.setAttribute("stroke-dasharray", tlen.toFixed(2) + " " + (TR_C - tlen).toFixed(2));
+        tArc.classList.toggle("full", done);
+      }
+      var tPctEl = card.querySelector('[data-role="total-ring-pct"]');
+      if (tPctEl) tPctEl.textContent = Math.min(999, Math.floor(tPct)) + "%";
+      var tLeftEl = card.querySelector('[data-role="total-left"]');
+      var tOfEl = card.querySelector('[data-role="total-of"]');
+      tPanel.classList.toggle("done", done);
+      if (tLeftEl) tLeftEl.textContent = done ? "Complete" : (fmtShort(tLeft) + " left");
+      if (tOfEl) tOfEl.textContent = done ? (fmtShort(tSpent) + " of " + fmtShort(tGoal)) : ("of " + fmtShort(tGoal));
+      var tSince = card.querySelector('[data-role="total-since"]');
+      if (tSince) tSince.textContent = o.totalStartKey ? ("since " + shortDate(o.totalStartKey)) : "";
+    }
   }
 
   // One hours/minutes column.
@@ -1780,7 +2029,7 @@
     f.appendChild(el("span", "field-sub", labelText));
     var inp = el("input");
     inp.type = "number"; inp.min = "0"; inp.max = String(max);
-    inp.step = (labelText === "Minutes") ? "5" : "1";
+    inp.step = "1";
     inp.setAttribute("inputmode", "numeric"); inp.setAttribute("pattern", "[0-9]*");
     inp.value = String(value);
     f.appendChild(inp);
@@ -1839,6 +2088,34 @@
     subBlock.appendChild(el("p", "field-hint", "A smaller daily target inside this weekly goal. Leave at 0 for none."));
     wrap.appendChild(subBlock);
 
+    // Optional total-time goal for a limited task (applies to weekly or daily objectives).
+    var totalBlock = el("div", "field-block");
+    var totalHead = el("div", "pomo-optrow");
+    var totalLabel = el("span", "field-label", "Limited task — set a total goal");
+    totalLabel.style.margin = "0"; totalLabel.style.flex = "1";
+    var totalToggle = el("button", "toggle"); totalToggle.type = "button";
+    totalToggle.setAttribute("role", "switch");
+    totalToggle.setAttribute("aria-label", "Set a total time goal");
+    totalHead.appendChild(totalLabel); totalHead.appendChild(totalToggle);
+    totalBlock.appendChild(totalHead);
+    var totalRow = el("div", "time-row");
+    var initTotal = init.totalGoalSeconds || 0;
+    var tH = timeField("Hours", Math.floor(initTotal / 3600), 9999);
+    var tM = timeField("Minutes", Math.round((initTotal % 3600) / 60), 59);
+    totalRow.appendChild(tH); totalRow.appendChild(tM);
+    totalBlock.appendChild(totalRow);
+    totalBlock.appendChild(el("p", "field-hint", "The whole amount you're aiming to spend to finish this (e.g. a 90-hour course). A ring on the card tracks how close you are."));
+    wrap.appendChild(totalBlock);
+
+    var totalOn = initTotal > 0;
+    function applyTotal(on) {
+      totalOn = on;
+      totalToggle.classList.toggle("on", on);
+      totalRow.hidden = !on;
+    }
+    totalToggle.addEventListener("click", function () { applyTotal(!totalOn); });
+    applyTotal(totalOn);
+
     function applyCadence(c) {
       cadence = c;
       wBtn.classList.toggle("active", c === "weekly");
@@ -1861,7 +2138,8 @@
         name: nameInput.value.trim(),
         cadence: cadence,
         goalSeconds: toSecs(pH, pM),
-        dailyGoalSeconds: cadence === "daily" ? 0 : toSecs(sH, sM)
+        dailyGoalSeconds: cadence === "daily" ? 0 : toSecs(sH, sM),
+        totalGoalSeconds: totalOn ? toSecs(tH, tM) : 0
       };
     };
     wrap.focusName = function () { setTimeout(function () { nameInput.focus(); }, 0); };
@@ -1907,6 +2185,11 @@
       o.cadence = v.cadence;
       o.goalSeconds = v.goalSeconds;
       o.dailyGoalSeconds = v.dailyGoalSeconds;
+      var hadTotal = o.totalGoalSeconds > 0;
+      o.totalGoalSeconds = v.totalGoalSeconds;
+      if (o.totalGoalSeconds > 0 && !hadTotal && !o.totalStartKey) o.totalStartKey = dayKeyOf(new Date());
+      if (o.totalGoalSeconds === 0) o.totalStartKey = null;
+      o.celebratedTotal = totalMet(o); // don't fire the popup just from an edit
       editingId = null;
       save();
       render();
@@ -1922,7 +2205,12 @@
     document.getElementById("week-range").textContent = weekRangeLabel();
     cardsEl.textContent = "";
 
-    if (state.objectives.length === 0) {
+    if (fullscreenId && !byId(fullscreenId)) fullscreenId = null; // objective was deleted
+    document.body.classList.toggle("fs-mode", !!fullscreenId);
+
+    if (fullscreenId) {
+      cardsEl.appendChild(renderCard(byId(fullscreenId)));
+    } else if (state.objectives.length === 0) {
       var empty = el("div", "empty");
       var p1 = el("p");
       var strong = el("strong", null, "No objectives yet.");
@@ -1999,20 +2287,97 @@
     }
   }
 
-  // ── Celebrations ──
-  var celebrateQueue = [];
-  var celebrating = false;
+  // ── Audio: synthesized "stopwatch" beeps (no asset files, works offline) ──
+  var audioCtx = null;
+  function getAudio() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audioCtx = null; }
+    }
+    return audioCtx;
+  }
+  // Browsers gate WebAudio until a user gesture; unlock on first interaction.
+  function unlockAudio() {
+    var a = getAudio();
+    if (a && a.state === "suspended") a.resume().catch(function () {});
+  }
+  document.addEventListener("pointerdown", unlockAudio);
+  document.addEventListener("keydown", unlockAudio);
+
+  function beepAt(a, when, freq, dur) {
+    var osc = a.createOscillator();
+    var g = a.createGain();
+    osc.type = "square";
+    osc.frequency.value = freq;
+    osc.connect(g); g.connect(a.destination);
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(0.22, when + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    osc.start(when);
+    osc.stop(when + dur + 0.02);
+  }
+  // "beep beep" three times, aligned to the three word-glow pulses.
+  function playStopwatchBeeps() {
+    var a = getAudio();
+    if (!a) return;
+    if (a.state === "suspended") a.resume().catch(function () {});
+    var t0 = a.currentTime + 0.04;
+    var PP = 0.7;    // one pair per 0.7s glow pulse
+    var GAP = 0.13;  // spacing within a "beep beep" pair
+    for (var i = 0; i < 3; i++) {
+      var base = t0 + i * PP + 0.14; // land each pair near its glow peak
+      beepAt(a, base, 2000, 0.07);
+      beepAt(a, base + GAP, 2450, 0.07);
+    }
+  }
+
+  // ── Announcement overlay: a big word that glows in time with the beeps ──
+  var ANNOUNCE_MS = 2400;
+  var announceOverlay = document.getElementById("announce-overlay");
+  var announceWord = document.getElementById("announce-word");
+  function showAnnouncement(text, opts, done) {
+    opts = opts || {};
+    announceWord.textContent = text;
+    announceOverlay.className = "announce-overlay" + (opts.variant ? " " + opts.variant : "");
+    announceOverlay.hidden = false;
+    announceWord.classList.remove("glow3");
+    void announceWord.offsetWidth; // restart the glow animation
+    announceWord.classList.add("glow3");
+    playStopwatchBeeps();
+    setTimeout(function () {
+      announceOverlay.hidden = true;
+      announceWord.classList.remove("glow3");
+      if (done) done();
+    }, ANNOUNCE_MS);
+  }
+
+  // ── Unified event queue: announcements and celebration popups, one at a time ──
+  var eventQueue = [];
+  var eventBusy = false;
   var CELEBRATE_OPENERS = ["Good job!", "Congratulations!", "Great work!", "Nice work!", "Well done!", "You did it!", "Amazing!"];
 
-  function enqueueCelebration(item) {
-    celebrateQueue.push(item);
-    showNextCelebration();
-  }
-  function showNextCelebration() {
-    if (celebrating || !celebrateQueue.length) return;
+  function enqueueEvent(item) { eventQueue.push(item); runEvents(); }
+  function enqueueCelebration(item) { item.kind = "popup"; enqueueEvent(item); } // streak / week / pomodoro popups
+  function enqueueAnnounce(text, variant) { enqueueEvent({ kind: "announce", text: text, variant: variant }); }
+  function enqueueTotalComplete(o) { enqueueEvent({ kind: "total", id: o.id, name: o.name }); }
+
+  function runEvents() {
+    if (eventBusy || !eventQueue.length) return;
     if (onboard && !onboard.hidden) return; // don't cover the welcome screen
-    celebrating = true;
-    var item = celebrateQueue.shift();
+    eventBusy = true;
+    var item = eventQueue.shift();
+    var next = function () { eventBusy = false; setTimeout(runEvents, 200); };
+    if (item.kind === "announce") {
+      showAnnouncement(item.text, { variant: item.variant }, next);
+    } else if (item.kind === "total") {
+      showAnnouncement("Task complete", {}, function () { openTotalPopup(item.id, item.name, next); });
+    } else {
+      showPopup(item, next);
+    }
+  }
+
+  var popupDone = null;
+  function showPopup(item, done) {
+    popupDone = done;
     var burst = document.getElementById("celebrate-burst");
     var title = document.getElementById("celebrate-title");
     var msg = document.getElementById("celebrate-msg");
@@ -2031,16 +2396,49 @@
     } else {
       burst.innerHTML = CHECK_SVG;
       title.textContent = pick(CELEBRATE_OPENERS);
-      msg.textContent = item.type === "week"
-        ? "You hit your entire weekly plan — every goal met. Incredible focus!"
-        : "You completed " + item.name + " for the week.";
+      msg.textContent = "You hit your entire weekly plan — every goal met. Incredible focus!";
     }
     document.getElementById("celebrate-overlay").hidden = false;
   }
   document.getElementById("celebrate-ok").addEventListener("click", function () {
     document.getElementById("celebrate-overlay").hidden = true;
-    celebrating = false;
-    setTimeout(showNextCelebration, 220);
+    var d = popupDone; popupDone = null;
+    if (d) d();
+  });
+
+  // ── Total-objective completion popup, with an option to clear & restart ──
+  var totalPopupDone = null, totalPopupId = null;
+  function openTotalPopup(id, name, done) {
+    totalPopupDone = done;
+    totalPopupId = id;
+    var o = byId(id);
+    var goal = o ? o.totalGoalSeconds : 0;
+    document.getElementById("total-msg").textContent =
+      "You've logged your full " + fmtShort(goal) + " goal" + (name ? " on " + name : "") + " — the whole thing is done!";
+    document.getElementById("total-overlay").hidden = false;
+  }
+  function closeTotalPopup() {
+    document.getElementById("total-overlay").hidden = true;
+    totalPopupId = null;
+    var d = totalPopupDone; totalPopupDone = null;
+    if (d) d();
+  }
+  document.getElementById("total-keep").addEventListener("click", closeTotalPopup);
+  document.getElementById("total-overlay").addEventListener("click", function (ev) { if (ev.target === this) closeTotalPopup(); });
+  document.getElementById("total-clear").addEventListener("click", function () {
+    var o = byId(totalPopupId);
+    if (o) {
+      // Commit time up to now, then zero the total and restart it from today.
+      var wasRunning = o.running && o.startedAt;
+      if (wasRunning) pauseObjective(o);
+      o.totalSpentSeconds = 0;
+      o.celebratedTotal = false;
+      o.totalStartKey = dayKeyOf(new Date());
+      if (wasRunning) { o.running = true; o.startedAt = Date.now(); }
+      save();
+    }
+    closeTotalPopup();
+    render();
   });
 
   // Glow a completed daily objective (card) or daily sub-goal (its bar) briefly.
@@ -2056,18 +2454,21 @@
     setTimeout(function () { target.classList.remove(cls); }, 2600);
   }
 
-  // Fire popups (weekly objective / week total) and glows (daily) on completion transitions.
+  // Fire announcements (goals + task complete) and the week-total popup on completion transitions.
   function checkCelebrations() {
     var dirty = false;
     state.objectives.forEach(function (o) {
       if (o.cadence !== "daily") {
         var wm = weeklyMet(o);
-        if (wm && !o.celebratedWeekly) { o.celebratedWeekly = true; dirty = true; enqueueCelebration({ type: "objective", name: o.name }); }
+        if (wm && !o.celebratedWeekly) { o.celebratedWeekly = true; dirty = true; enqueueAnnounce("Weekly goal achieved"); }
         else if (!wm && o.celebratedWeekly) { o.celebratedWeekly = false; dirty = true; }
       }
       var dm = dailyMet(o);
-      if (dm && !o.celebratedDaily) { o.celebratedDaily = true; dirty = true; triggerGlow(o); }
+      if (dm && !o.celebratedDaily) { o.celebratedDaily = true; dirty = true; triggerGlow(o); enqueueAnnounce("Daily goal achieved"); }
       else if (!dm && o.celebratedDaily) { o.celebratedDaily = false; dirty = true; }
+      var tm = totalMet(o);
+      if (tm && !o.celebratedTotal) { o.celebratedTotal = true; dirty = true; enqueueTotalComplete(o); }
+      else if (!tm && o.celebratedTotal) { o.celebratedTotal = false; dirty = true; }
     });
     var wt = weekTotalMet();
     if (wt && !state.celebratedWeekTotal) { state.celebratedWeekTotal = true; dirty = true; enqueueCelebration({ type: "week" }); }
@@ -2111,13 +2512,17 @@
       cadence: v.cadence,
       goalSeconds: v.goalSeconds,
       dailyGoalSeconds: v.dailyGoalSeconds,
+      totalGoalSeconds: v.totalGoalSeconds || 0,
+      totalSpentSeconds: 0,
+      totalStartKey: v.totalGoalSeconds > 0 ? dayKeyOf(new Date()) : null,
       spentSeconds: 0,
       daySpentSeconds: 0,
       dayKey: dayKeyOf(new Date()),
       running: false,
       startedAt: null,
       celebratedWeekly: false,
-      celebratedDaily: false
+      celebratedDaily: false,
+      celebratedTotal: false
     });
     save();
     closeModal();
@@ -2838,9 +3243,12 @@
 
   // ══ Pomodoro ══
   var pomoTargetId = null, pomoHasTotal = false;
+  var pomoAnnouncing = false;         // true while the BREAK/FOCUS word is on screen
+  var ANNOUNCE_SKIP_MS = 8000;        // if we overshot by more than this (backgrounded), switch silently
 
   function startPomodoro(id, focusSec, breakSec, totalSec) {
     var o = byId(id); if (!o) return;
+    unlockAudio();
     state.objectives.forEach(function (x) { if (x.id !== id) pauseObjective(x); });
     if (!o.running) { o.running = true; o.startedAt = Date.now(); }
     var now = Date.now();
@@ -2870,6 +3278,7 @@
   // Advance pomodoro phases; returns true if it re-rendered.
   function pomodoroTick() {
     var p = state.pomodoro; if (!p) return false;
+    if (pomoAnnouncing) return false; // hold while the BREAK/FOCUS word is showing
     var o = byId(p.id);
     if (!o) { state.pomodoro = null; render(); return true; }
     var now = Date.now();
@@ -2879,15 +3288,40 @@
         if (p.hasTotal) p.totalFocusRemaining = Math.max(0, p.totalFocusRemaining - p.focusSec);
         pauseObjective(o);
         if (p.hasTotal && p.totalFocusRemaining <= 0) { endPomodoro(true); return true; }
-        p.phase = "break"; p.phaseStartedAt = now; p.phaseEndsAt = now + p.breakSec * 1000;
-        persistLocal(); render(); flashCard(p.id);
+        if (now - p.phaseEndsAt <= ANNOUNCE_SKIP_MS) {
+          // Announce "BREAK" (glow + beeps); the break timer starts when it finishes.
+          pomoAnnouncing = true;
+          persistLocal(); render();
+          showAnnouncement("Break", { variant: "break" }, function () {
+            var n2 = Date.now();
+            p.phase = "break"; p.phaseStartedAt = n2; p.phaseEndsAt = n2 + p.breakSec * 1000;
+            pomoAnnouncing = false;
+            persistLocal(); render(); flashCard(p.id);
+          });
+        } else {
+          p.phase = "break"; p.phaseStartedAt = now; p.phaseEndsAt = now + p.breakSec * 1000;
+          persistLocal(); render(); flashCard(p.id);
+        }
         return true;
       }
     } else {
       if (now >= p.phaseEndsAt) {
-        o.running = true; o.startedAt = now;
-        p.phase = "focus"; p.phaseStartedAt = now; p.phaseEndsAt = now + p.focusSec * 1000;
-        persistLocal(); render(); flashCard(p.id);
+        if (now - p.phaseEndsAt <= ANNOUNCE_SKIP_MS) {
+          // Announce "FOCUS" (glow + beeps); the focus timer starts when it finishes.
+          pomoAnnouncing = true;
+          persistLocal(); render();
+          showAnnouncement("Focus", {}, function () {
+            var n3 = Date.now();
+            o.running = true; o.startedAt = n3;
+            p.phase = "focus"; p.phaseStartedAt = n3; p.phaseEndsAt = n3 + p.focusSec * 1000;
+            pomoAnnouncing = false;
+            persistLocal(); render(); flashCard(p.id);
+          });
+        } else {
+          o.running = true; o.startedAt = now;
+          p.phase = "focus"; p.phaseStartedAt = now; p.phaseEndsAt = now + p.focusSec * 1000;
+          persistLocal(); render(); flashCard(p.id);
+        }
         return true;
       }
     }
@@ -2906,6 +3340,9 @@
     tw.appendChild(tl);
     tw.appendChild(el("p", "goal-note", (o.cadence === "daily" ? "Daily goal: " : "Weekly goal: ") + fmtShort(o.goalSeconds)));
     top.appendChild(tw);
+    var pbtns = el("div", "icon-btns");
+    pbtns.appendChild(makeFsBtn(o.id));
+    top.appendChild(pbtns);
     card.appendChild(top);
 
     var phase = el("p", "pomo-phase");
@@ -2988,10 +3425,12 @@
   // Shared Escape handling for the new modals.
   document.addEventListener("keydown", function (ev) {
     if (ev.key !== "Escape") return;
-    [["streak-overlay", closeStreak], ["progress-overlay", closeProgress], ["pomo-overlay", closePomoSetup]].forEach(function (pair) {
+    var closedAny = false;
+    [["streak-overlay", closeStreak], ["progress-overlay", closeProgress], ["pomo-overlay", closePomoSetup], ["total-overlay", closeTotalPopup]].forEach(function (pair) {
       var node = document.getElementById(pair[0]);
-      if (node && !node.hidden) pair[1]();
+      if (node && !node.hidden) { pair[1](); closedAny = true; }
     });
+    if (!closedAny && fullscreenId) exitFullscreen();
   });
 
   // ── Boot ──

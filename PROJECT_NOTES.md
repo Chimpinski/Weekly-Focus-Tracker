@@ -6,14 +6,14 @@ A personal time-tracking web app. You define objectives (e.g. "Linear Algebra co
 - **Repo:** https://github.com/Chimpinski/Weekly-Focus-Tracker (public, default branch `main`)
 - **Live PWA:** https://chimpinski.github.io/Weekly-Focus-Tracker/ (GitHub Pages, serves `main` root)
 - **Local working dir:** `C:\Users\alial\OneDrive - UW\Claude`
-- **Current version:** v1.3.1
+- **Current version:** v1.4.0
 - **Git identity:** user "Ali", pushes over HTTPS via Git Credential Manager (already authenticated)
 
 ## Tech stack & structure
 No framework, no build step. Everything is hand-written HTML/CSS/vanilla JS.
 
-- `index.html` — the **entire app** (~2,300 lines): all markup, CSS in one `<style>`, logic in one IIFE `<script>`. This is where ~all work happens.
-- `sw.js` — service worker. **Network-first for the page** (so updates reach installed PWAs), cache-first for assets. Bump the `CACHE` const (currently `"wft-v6"`) on each release.
+- `index.html` — the **entire app** (~3,200 lines): all markup, CSS in one `<style>`, logic in one IIFE `<script>`. This is where ~all work happens.
+- `sw.js` — service worker. **Network-first for the page** (so updates reach installed PWAs), cache-first for assets. Bump the `CACHE` const (currently `"wft-v7"`) on each release.
 - `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png` — PWA install assets.
 - `assets/icon.png` — 1024px source icon; CI generates native app icons from it.
 - `capacitor.config.json` — `appId: com.chimpinski.weeklyfocus`, `appName: "Focus Timer"`, `webDir: "www"`, `ios.contentInset: "never"`, `backgroundColor: "#101615"`.
@@ -25,7 +25,8 @@ No framework, no build step. Everything is hand-written HTML/CSS/vanilla JS.
 ### Data model (all in `localStorage`)
 Main key `weekly-focus-timer-v1` holds one `state` object:
 - `weekStart` (Monday key), `userName`, `updatedAt` (monotonic ms — drives last-write-wins sync)
-- `objectives[]`: `{id, name, cadence:"weekly"|"daily", goalSeconds, dailyGoalSeconds, spentSeconds, daySpentSeconds, dayKey, running, startedAt, celebratedWeekly, celebratedDaily}`
+- `objectives[]`: `{id, name, cadence:"weekly"|"daily", goalSeconds, dailyGoalSeconds, spentSeconds, daySpentSeconds, dayKey, running, startedAt, celebratedWeekly, celebratedDaily, totalGoalSeconds, totalSpentSeconds, celebratedTotal, totalStartKey}`
+  - `totalGoalSeconds` (0 = not a limited task), `totalSpentSeconds` = **cumulative** time toward the total (incremented wherever `spentSeconds` is, but **never** reset by the weekly rollover), `celebratedTotal` guards the completion popup, `totalStartKey` = dayKey the total began/was last cleared (shown as "since …").
 - `dailyLog: {dayKey: seconds}` — total tracked per calendar day; powers the month grid, stats, and streak
 - `weekHistory: {mondayKey: {objectives:[{name,goalSeconds,spentSeconds}], goalTotal, spentTotal}}` — snapshot taken at each weekly rollover
 - `excludeWeekends` (bool), `streakMilestone` (highest celebrated), `celebratedWeekTotal` (bool)
@@ -45,6 +46,9 @@ There's a `migrate()` run on load and after adopting synced state that backfills
 - **Progress history:** per-week achievement tracker, GitHub-style monthly activity grid (day shading, selected-week highlight, month nav moves the week), and a **Stats** view (8-week bar chart + table).
 - **Streaks:** header flame (lights after 15 min/day), popup with the week's day circles, milestone celebrations, optional "skip weekends".
 - **Pomodoro mode:** focus/break cycles with optional total focus time; only focus counts toward the goal; completion popup.
+- **Total objective time (limited tasks):** optional `totalGoalSeconds`; right-side `.total-panel` on the card with a small full-circle ring (`TR_R`/`TR_C`, % inside) + "Xh left / of Yh / since …"; completion fires a **"Task complete"** announcement then a congrats popup (`#total-overlay`) with **Clear & start fresh** (commits time, zeros the total, restarts `totalStartKey` today).
+- **Full-screen task view:** per-card expand button toggles `fullscreenId`; `render()` shows only that card and sets `body.fs-mode`, which hides header/summary/footer/FAB and enlarges the card (works for normal and pomodoro cards). Exit via the button or Escape.
+- **Sound + announcements:** synthesized **WebAudio** stopwatch beeps (`playStopwatchBeeps` — 2 beeps × 3, no asset files) plus a full-screen glowing word (`#announce-overlay`, `showAnnouncement`). Pomodoro focus↔break shows **BREAK/FOCUS** for ~2.4s (via `pomoAnnouncing` guard) before the next block starts; daily/weekly goals and total completion announce without stopping a running timer. Celebrations now run through one sequential `eventQueue` (`enqueueAnnounce`/`enqueueCelebration`/`enqueueTotalComplete`). Audio is unlocked on first gesture (`unlockAudio`).
 
 ## Key decisions & tradeoffs
 - **Single-file vanilla JS, no build** — keeps it trivially hostable as static and easy to wrap in Capacitor. Downside: `index.html` is large; keep functions cohesive.
@@ -58,7 +62,8 @@ There's a `migrate()` run on load and after adopting synced state that backfills
 - `dailyLog`/`weekHistory` grow unbounded (tiny for personal use; never pruned).
 - Sync is last-write-wins only — two devices editing offline can lose one side's changes on next sync.
 - textdb.online retention is not guaranteed.
-- Pomodoro break input steps by 1 (intentional; only focus was constrained to multiples of 5).
+- All minute inputs now step by 1 (as of v1.4.0; previously log/goal/pomodoro-focus minutes were constrained to multiples of 5). Any whole number is accepted.
+- The total panel is hidden while an objective is in Pomodoro mode (the pomodoro card is its own focused layout); it returns when the pomodoro ends.
 
 ## Environment note for verification
 In this environment the **in-app browser-pane screenshot tool times out** — don't rely on it. Verify functionally via JS eval / DOM inspection, and for **visual** checks use **headless Edge** (this works):

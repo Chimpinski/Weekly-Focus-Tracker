@@ -12,6 +12,19 @@ project uses [semantic versioning](https://semver.org/).
 
 _Nothing yet._
 
+## [1.4.0] - 2026-07-26
+
+### Added
+- **Total objective time.** When creating (or editing) an objective you can now mark it a *limited task* and set the whole amount of time you're aiming to spend — e.g. a 90-hour course. A panel on the right of the card shows a small ring with your completion percentage inside it, plus how much time is left of the total. Finishing the whole thing pops a **congratulations** dialog with an option to **clear & start fresh** from that day.
+- **Full-screen a task.** Each task has a full-screen button that hides everything else and shows just that timer, enlarged and spread out for an at-a-glance focus view. Exit with the button or Escape.
+- **Sound + on-screen cues.** A stopwatch-style beep (two beeps, three times) now plays with a big glowing word for key moments. Pomodoro shows **BREAK** / **FOCUS** for a few seconds — beeping and glowing in time — before the next block starts. Finishing a daily/weekly goal shows **DAILY/WEEKLY GOAL ACHIEVED**, and completing a limited task's total shows **TASK COMPLETE**, all without stopping a running timer.
+
+### Changed
+- **Log time in any whole minute.** Time fields (manual log, goals, and Pomodoro focus/total) now accept any whole number of minutes instead of only multiples of 5.
+
+### Fixed
+- On smaller phones (e.g. iPhone 13) the card action buttons now wrap instead of the Pomodoro button spilling outside the card.
+
 ## [1.3.1] - 2026-07-10
 
 ### Changed
@@ -80,7 +93,8 @@ _Nothing yet._
 - Installable PWA (web manifest, app icons, offline service worker).
 - An unsigned `.ipa` attached to the release for personal sideloading.
 
-[Unreleased]: https://github.com/Chimpinski/Weekly-Focus-Tracker/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/Chimpinski/Weekly-Focus-Tracker/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.4.0
 [1.3.1]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.3.1
 [1.3.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.3.0
 [1.2.1]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.2.1
