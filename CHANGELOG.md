@@ -12,6 +12,15 @@ project uses [semantic versioning](https://semver.org/).
 
 _Nothing yet._
 
+## [1.5.0] - 2026-07-26
+
+### Fixed
+- **Sync could wipe your history.** A copy of your data with the objectives intact but the progress emptied (from the free sync server losing/resetting a value) could win the last-write-wins race and blank out every device — logged time, streak, and past weeks. Sync now refuses to accept a copy that erases or sharply shrinks your history (daily log, past weeks, logged time, or objectives) unless it's a change you actually made. The richer copy is kept and re-shared, so an accidental wipe can no longer propagate.
+
+### Added
+- **Automatic backups tied to your sync code.** Your history is snapshotted about once a day; the snapshots travel with your sync code and there's also an on-device "last known good" copy — so your data follows you across updates and reinstalls as long as you keep your code.
+- **Backups & restore** in Settings: browse restore points (with dates and a summary of each) and roll back with two taps. If the app ever opens missing history it had before, it now offers to restore it automatically instead of silently losing it.
+
 ## [1.4.0] - 2026-07-26
 
 ### Added
@@ -93,7 +102,8 @@ _Nothing yet._
 - Installable PWA (web manifest, app icons, offline service worker).
 - An unsigned `.ipa` attached to the release for personal sideloading.
 
-[Unreleased]: https://github.com/Chimpinski/Weekly-Focus-Tracker/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/Chimpinski/Weekly-Focus-Tracker/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.5.0
 [1.4.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.4.0
 [1.3.1]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.3.1
 [1.3.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.3.0

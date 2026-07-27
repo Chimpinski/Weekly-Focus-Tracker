@@ -6,14 +6,14 @@ A personal time-tracking web app. You define objectives (e.g. "Linear Algebra co
 - **Repo:** https://github.com/Chimpinski/Weekly-Focus-Tracker (public, default branch `main`)
 - **Live PWA:** https://chimpinski.github.io/Weekly-Focus-Tracker/ (GitHub Pages, serves `main` root)
 - **Local working dir:** `C:\Users\alial\OneDrive - UW\Claude`
-- **Current version:** v1.4.0
+- **Current version:** v1.5.0
 - **Git identity:** user "Ali", pushes over HTTPS via Git Credential Manager (already authenticated)
 
 ## Tech stack & structure
 No framework, no build step. Everything is hand-written HTML/CSS/vanilla JS.
 
 - `index.html` — the **entire app** (~3,200 lines): all markup, CSS in one `<style>`, logic in one IIFE `<script>`. This is where ~all work happens.
-- `sw.js` — service worker. **Network-first for the page** (so updates reach installed PWAs), cache-first for assets. Bump the `CACHE` const (currently `"wft-v7"`) on each release.
+- `sw.js` — service worker. **Network-first for the page** (so updates reach installed PWAs), cache-first for assets. Bump the `CACHE` const (currently `"wft-v8"`) on each release.
 - `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png` — PWA install assets.
 - `assets/icon.png` — 1024px source icon; CI generates native app icons from it.
 - `capacitor.config.json` — `appId: com.chimpinski.weeklyfocus`, `appName: "Focus Timer"`, `webDir: "www"`, `ios.contentInset: "never"`, `backgroundColor: "#101615"`.
@@ -31,6 +31,8 @@ Main key `weekly-focus-timer-v1` holds one `state` object:
 - `weekHistory: {mondayKey: {objectives:[{name,goalSeconds,spentSeconds}], goalTotal, spentTotal}}` — snapshot taken at each weekly rollover
 - `excludeWeekends` (bool), `streakMilestone` (highest celebrated), `celebratedWeekTotal` (bool)
 - `pomodoro: null | {id, focusSec, breakSec, hasTotal, totalFocusRemaining, phase, phaseStartedAt, phaseEndsAt}`
+- `backups: [{ts, dayKey, weight, data}]` — rolling dated snapshots (one/day, cap 14) that **ride along inside the synced state**; `data` is a full state minus its own `backups` (no recursion) and minus the live timer. `lastDestructiveAt` (ms) — set by `markDestructive()` on intentional reductions (delete objective, reset time, subtract, clear total) so those legitimately sync.
+- Separate localStorage key `weekly-focus-timer-lkg` — an on-device **last-known-good** copy (a `snapshotOf(state)`), written on each non-empty `save()` and never downgraded unless the reduction was intentional.
 
 Separate keys: `wft-theme` (`system|light|dark`), `wft-progress` (`bar|ring`), `wft-sync-code` (`WFT-XXXX-XXXX-XXXX`).
 
@@ -49,10 +51,13 @@ There's a `migrate()` run on load and after adopting synced state that backfills
 - **Total objective time (limited tasks):** optional `totalGoalSeconds`; right-side `.total-panel` on the card with a small full-circle ring (`TR_R`/`TR_C`, % inside) + "Xh left / of Yh / since …"; completion fires a **"Task complete"** announcement then a congrats popup (`#total-overlay`) with **Clear & start fresh** (commits time, zeros the total, restarts `totalStartKey` today).
 - **Full-screen task view:** per-card expand button toggles `fullscreenId`; `render()` shows only that card and sets `body.fs-mode`, which hides header/summary/footer/FAB and enlarges the card (works for normal and pomodoro cards). Exit via the button or Escape.
 - **Sound + announcements:** synthesized **WebAudio** stopwatch beeps (`playStopwatchBeeps` — 2 beeps × 3, no asset files) plus a full-screen glowing word (`#announce-overlay`, `showAnnouncement`). Pomodoro focus↔break shows **BREAK/FOCUS** for ~2.4s (via `pomoAnnouncing` guard) before the next block starts; daily/weekly goals and total completion announce without stopping a running timer. Celebrations now run through one sequential `eventQueue` (`enqueueAnnounce`/`enqueueCelebration`/`enqueueTotalComplete`). Audio is unlocked on first gesture (`unlockAudio`).
+- **Backups & restore (Settings):** `#restore-overlay` lists restore points (on-device LKG + in-state snapshots) with dates + a `summarizeSnap` line; two-tap confirm restores via `restoreSnapshot` (bumps `updatedAt` so the restore wins sync). "Back up now" forces a snapshot. See the sync hardening under Key decisions.
 
 ## Key decisions & tradeoffs
 - **Single-file vanilla JS, no build** — keeps it trivially hostable as static and easy to wrap in Capacitor. Downside: `index.html` is large; keep functions cohesive.
-- **Sync backend = textdb.online** (a free, no-signup, CORS-open key-value store). Chosen after testing ~5 services; others lacked CORS or required accounts/captchas. Sync uses a random code `WFT-XXXX-XXXX-XXXX`; the key is `"wft" + code-without-dashes, lowercased`. POSTs are form-encoded to avoid a CORS preflight. **Last-write-wins** on `updatedAt`. Tradeoffs: it's a free community service (retention not guaranteed) and the code is the only secret (treat like a password); mitigated because every device keeps a full local copy, so a server wipe just means reconnecting. Automatic resets use a `persistLocal()` that does **not** bump `updatedAt`, so devices don't fight over deterministic resets.
+- **Sync backend = textdb.online** (a free, no-signup, CORS-open key-value store). Chosen after testing ~5 services; others lacked CORS or required accounts/captchas. Sync uses a random code `WFT-XXXX-XXXX-XXXX`; the key is `"wft" + code-without-dashes, lowercased`. POSTs are form-encoded to avoid a CORS preflight. Automatic resets use a `persistLocal()` that does **not** bump `updatedAt`, so devices don't fight over deterministic resets. Tradeoffs: it's a free community service (retention not guaranteed) and the code is the only secret (treat like a password).
+- **Sync arbitration is a pure function `resolveSync(local, remote) → {action:"adopt"|"reseed"|"noop", state?}`** (v1.5.0), so it's unit-testable without the network. It's last-write-wins on `updatedAt` **except** it will not adopt a copy that wipes or sharply shrinks history (empty `dailyLog`/`weekHistory`/objectives, or `dataWeight` more than halved) unless the reduction was intentional (`remote.lastDestructiveAt > local.lastDestructiveAt`). On such a "reseed", it also bumps local `updatedAt` above the rejected remote so the accidental wipe can't keep winning. **This exists because v1.4.0-era sync wiped everyone's progress** when the server returned an objectives-intact-but-progress-zeroed copy with a newer timestamp. `dataStats`/`dataWeight` measure *durable* history (cumulative `totalSpentSeconds`, `dailyLog`, `weekHistory`, streak) and deliberately ignore weekly `spentSeconds`, which resets every Monday. Don't "simplify" this back to plain last-write-wins.
+- **Redundancy:** rolling in-state `backups` + on-device LKG + a boot-time regression check (`checkBootRecovery`) that offers a restore. `adoptRemoteState` merges backups from both sides and stashes a pre-adopt snapshot so an adopt/connect is always reversible from Settings › Backups.
 - **Streak derived from `dailyLog`**, not a stored counter — robust across sync and time changes.
 - **iOS Live Activity was built (v1.1.1) then removed (v1.2.0)** because signing services (you use **Signulous**) reject the required app extension. The native Swift/widget files were deleted but **still exist in git history** (harmless, not built). Don't re-add app extensions.
 - iOS full-bleed handled via `viewport-fit=cover` + safe-area insets; inputs are 16px and zoom is disabled so iOS doesn't zoom on focus.
@@ -60,8 +65,8 @@ There's a `migrate()` run on load and after adopting synced state that backfills
 ## Known issues / unfinished
 - README `docs/preview-*.png` predate the streak/progress header buttons — slightly stale; regenerate when convenient.
 - `dailyLog`/`weekHistory` grow unbounded (tiny for personal use; never pruned).
-- Sync is last-write-wins only — two devices editing offline can lose one side's changes on next sync.
-- textdb.online retention is not guaranteed.
+- Sync is last-write-wins for *genuine* concurrent edits — two devices editing different things offline can still lose one side's changes on next sync (the v1.5.0 guards only protect against wipes/regressions, not legitimate divergent edits).
+- textdb.online retention is not guaranteed — but a lost/reset server value can no longer wipe devices (guarded), and any device with data re-seeds it. Full local copies + backups remain the safety net.
 - All minute inputs now step by 1 (as of v1.4.0; previously log/goal/pomodoro-focus minutes were constrained to multiples of 5). Any whole number is accepted.
 - The total panel is hidden while an objective is in Pomodoro mode (the pomodoro card is its own focused layout); it returns when the pomodoro ends.
 

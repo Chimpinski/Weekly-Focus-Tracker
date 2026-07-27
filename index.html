@@ -1050,6 +1050,23 @@
   @media (prefers-reduced-motion: reduce) {
     .announce-word.glow3 { animation: none; opacity: 1; text-shadow: 0 0 26px currentColor; }
   }
+
+  /* ── Backups / restore ── */
+  .restore-banner {
+    font-size: 13px; font-weight: 600; color: var(--ink);
+    background: var(--accent-soft); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; line-height: 1.4;
+  }
+  .restore-banner[hidden] { display: none; }
+  .restore-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+  .restore-item:last-child { border-bottom: none; }
+  .restore-info { min-width: 0; }
+  .restore-when { font-weight: 650; font-size: 14px; }
+  .restore-when .tag { margin-left: 6px; }
+  .restore-sum { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 2px; overflow-wrap: anywhere; }
+  .restore-item .btn-secondary { flex-shrink: 0; }
+  .restore-item.armed .btn-secondary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .restore-empty { color: var(--muted); font-size: 14px; text-align: center; padding: 18px 0; }
 </style>
 </head>
 <body>
@@ -1181,6 +1198,11 @@
           <p class="sync-hint">Enter this code on your other device to see the same timers there. Anyone with the code can see and change your data, so keep it to yourself.</p>
           <button class="btn-ghost" type="button" id="sync-stop">Stop syncing on this device</button>
         </div>
+      </div>
+      <div class="setting-field">
+        <span class="setting-label">Backups</span>
+        <p class="sync-hint">Your history is snapshotted automatically and kept with your sync code, so it survives updates and reinstalls. You can roll back here if anything ever looks wrong.</p>
+        <button class="btn-secondary" type="button" id="settings-backups">Backups &amp; restore</button>
       </div>
     </div>
     <div class="form-actions settings-actions">
@@ -1316,6 +1338,21 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="restore-overlay" hidden>
+  <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="restore-title">
+    <div class="modal-head">
+      <h2 id="restore-title">Backups</h2>
+      <button class="modal-close" id="restore-close" type="button" aria-label="Close">&times;</button>
+    </div>
+    <p class="restore-banner" id="restore-banner" hidden></p>
+    <p class="sync-hint">Restore points are saved automatically (about one a day) and travel with your sync code, so your history follows you across updates and reinstalls.</p>
+    <div id="restore-list"></div>
+    <div class="form-actions" style="margin-top:16px">
+      <button class="btn-secondary" type="button" id="restore-backup-now">Back up now</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   "use strict";
@@ -1395,6 +1432,8 @@
     if (typeof state.excludeWeekends !== "boolean") state.excludeWeekends = false;
     if (typeof state.streakMilestone !== "number") state.streakMilestone = 0;
     if (typeof state.pomodoro === "undefined") state.pomodoro = null;
+    if (!Array.isArray(state.backups)) state.backups = [];              // rolling dated snapshots (ride along with sync)
+    if (typeof state.lastDestructiveAt !== "number") state.lastDestructiveAt = 0; // ms of the last intentional data reduction
   }
 
   // ── Daily activity log (powers the streak, the month grid, and stats) ──
@@ -1430,6 +1469,8 @@
   }
   function save() {
     state.updatedAt = Math.max(Date.now(), (state.updatedAt || 0) + 1); // monotonic for last-write-wins sync
+    captureSnapshot(false); // rolling once-a-day snapshot inside state.backups
+    writeLKG();             // on-device last-known-good
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* private mode */ }
     schedulePush();
   }
@@ -1443,6 +1484,117 @@
     } catch (e) { /* corrupted or unavailable — start fresh */ }
     if (!state.weekStart) state.weekStart = weekKey(new Date());
     migrate();
+  }
+
+  // ══ Data safety: measure how much history a state holds, guard sync, keep backups ══
+  var LKG_KEY = "weekly-focus-timer-lkg"; // on-device last-known-good (survives logic bugs; not a full container wipe)
+  var MAX_BACKUPS = 14;
+
+  // A fingerprint of how much *tracked history* a state carries.
+  function dataStats(s) {
+    var st = { objs: 0, spent: 0, dlDays: 0, dlSecs: 0, weeks: 0, streakMs: 0 };
+    if (s && Array.isArray(s.objectives)) {
+      st.objs = s.objectives.length;
+      // Use the cumulative total (never auto-reset) so a normal weekly reset of
+      // spentSeconds doesn't read as data loss.
+      s.objectives.forEach(function (o) { st.spent += (o.totalSpentSeconds || 0); });
+    }
+    var dl = (s && s.dailyLog) || {};
+    for (var k in dl) if (Object.prototype.hasOwnProperty.call(dl, k)) { st.dlDays++; st.dlSecs += (dl[k] || 0); }
+    st.weeks = s && s.weekHistory ? Object.keys(s.weekHistory).length : 0;
+    st.streakMs = (s && s.streakMilestone) || 0;
+    return st;
+  }
+  function dataWeight(s) {
+    var st = dataStats(s);
+    if (!st.objs && !st.spent && !st.dlDays && !st.weeks) return 0;
+    return st.spent + st.dlSecs + st.dlDays * 600 + st.weeks * 3600 + st.objs * 60 + st.streakMs * 600;
+  }
+  function hasData(s) { return dataWeight(s) > 0; }
+
+  // Would adopting `remote` erase history that `local` has? (structural wipe or a big drop)
+  function isRegression(local, remote) {
+    var L = dataStats(local), R = dataStats(remote);
+    if (!(L.objs || L.spent || L.dlDays || L.weeks)) return false; // local has nothing to lose
+    if (L.dlDays > 0 && R.dlDays === 0) return true;   // daily log wiped (streak + stats)
+    if (L.weeks > 0 && R.weeks === 0) return true;     // past-week history wiped
+    if (L.objs > 0 && R.objs === 0) return true;       // objectives wiped
+    if (dataWeight(remote) * 2 < dataWeight(local)) return true; // more than half the data gone
+    return false;
+  }
+
+  // Pure sync arbitration. Returns { action: "adopt" | "reseed" | "noop", state? }.
+  // Kept side-effect-free so it can be unit-tested without touching the network.
+  function resolveSync(local, remote) {
+    if (!remote || !Array.isArray(remote.objectives)) return { action: "reseed" }; // empty/garbage -> push ours
+    var lu = local.updatedAt || 0, ru = remote.updatedAt || 0;
+    if (ru > lu) {
+      // Remote is newer. Adopt — unless it would wipe history and that reduction
+      // wasn't an intentional edit made (more recently) on another device.
+      var intentional = (remote.lastDestructiveAt || 0) > (local.lastDestructiveAt || 0);
+      if (isRegression(local, remote) && !intentional) return { action: "reseed" };
+      return { action: "adopt", state: remote };
+    }
+    if (ru < lu) return { action: "reseed" };
+    return { action: "noop" };
+  }
+
+  // Mark an intentional data reduction (delete objective, reset/subtract time, clear total)
+  // so it syncs normally instead of looking like an accidental wipe. Call before save().
+  function markDestructive() {
+    state.lastDestructiveAt = Math.max(Date.now(), (state.lastDestructiveAt || 0) + 1);
+  }
+
+  // A deep copy of a state minus its own backups (no recursion) and mid-run timer bits.
+  function snapshotOf(s) {
+    var copy = {};
+    for (var k in s) if (Object.prototype.hasOwnProperty.call(s, k) && k !== "backups") copy[k] = s[k];
+    copy = JSON.parse(JSON.stringify(copy));
+    if (Array.isArray(copy.objectives)) copy.objectives.forEach(function (o) { o.running = false; o.startedAt = null; });
+    copy.pomodoro = null;
+    return copy;
+  }
+  function makeSnap() {
+    return { ts: Date.now(), dayKey: dayKeyOf(new Date()), weight: dataWeight(state), data: snapshotOf(state) };
+  }
+  // Rolling dated snapshots kept inside state.backups (so they ride along with sync). One per day.
+  function captureSnapshot(force) {
+    if (!hasData(state)) return;
+    if (!Array.isArray(state.backups)) state.backups = [];
+    var today = dayKeyOf(new Date());
+    var snap = makeSnap();
+    if (!force && state.backups.length && state.backups[0].dayKey === today) state.backups[0] = snap;
+    else state.backups.unshift(snap);
+    if (state.backups.length > MAX_BACKUPS) state.backups.length = MAX_BACKUPS;
+  }
+  function readLKG() {
+    try { var raw = localStorage.getItem(LKG_KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+  }
+  function writeLKG() {
+    if (!hasData(state)) return; // never overwrite a good backup with an empty state
+    var prev = readLKG();
+    var intentional = prev && (state.lastDestructiveAt || 0) > (prev.lastDestructiveAt || 0);
+    if (prev && dataWeight(state) < dataWeight(prev) && !intentional) return; // don't downgrade unless intended
+    try { localStorage.setItem(LKG_KEY, JSON.stringify(snapshotOf(state))); } catch (e) {}
+  }
+  // Merge snapshot lists (newest first, one richest per day, capped).
+  function mergeBackups(a, b, extra) {
+    var all = (Array.isArray(a) ? a : []).concat(Array.isArray(b) ? b : []);
+    if (extra) all.push(extra);
+    var seen = {}, out = [];
+    all.sort(function (x, y) { return (y.ts || 0) - (x.ts || 0); });
+    all.forEach(function (s) {
+      if (!s || !s.data) return;
+      var key = s.dayKey || String(s.ts);
+      if (!seen[key]) { seen[key] = s; out.push(s); }
+      else if ((s.weight || 0) > (seen[key].weight || 0)) {
+        for (var i = 0; i < out.length; i++) if (out[i] === seen[key]) { out[i] = s; break; }
+        seen[key] = s;
+      }
+    });
+    out.sort(function (x, y) { return (y.ts || 0) - (x.ts || 0); });
+    if (out.length > MAX_BACKUPS) out.length = MAX_BACKUPS;
+    return out;
   }
 
   // Save a snapshot of a finished week's per-goal achievement for the history view.
@@ -1595,6 +1747,7 @@
   }
   function deleteObjective(id) {
     state.objectives = state.objectives.filter(function (o) { return o.id !== id; });
+    markDestructive(); // intentional reduction — let it sync instead of looking like a wipe
     save();
     render();
   }
@@ -1831,6 +1984,7 @@
       o.dayKey = dayKeyOf(new Date());
       var dk = dayKeyOf(new Date());
       state.dailyLog[dk] = Math.max(0, (state.dailyLog[dk] || 0) + delta); // reflect in the activity log
+      if (sign < 0) markDestructive(); // subtracting time is an intentional reduction
       loggingId = null;
       save();
       render();
@@ -2168,6 +2322,7 @@
       o.daySpentSeconds = 0;
       o.celebratedWeekly = false;
       o.celebratedDaily = false;
+      markDestructive(); // intentional reset
       editingId = null;
       save();
       render();
@@ -2435,6 +2590,7 @@
       o.celebratedTotal = false;
       o.totalStartKey = dayKeyOf(new Date());
       if (wasRunning) { o.running = true; o.startedAt = Date.now(); }
+      markDestructive(); // intentional reset of the total
       save();
     }
     closeTotalPopup();
@@ -2782,14 +2938,17 @@
         txt = (txt || "").trim();
         var remote = null;
         if (txt) { try { remote = JSON.parse(txt); } catch (e) {} }
-        if (!remote || !Array.isArray(remote.objectives)) {
-          // Remote empty or unreadable: seed it with our data.
-          schedulePush(); syncOk(); if (done) done(false); return;
-        }
-        if ((remote.updatedAt || 0) > (state.updatedAt || 0)) {
-          adoptRemoteState(remote);
+        var r = resolveSync(state, remote);
+        if (r.action === "adopt") {
+          adoptRemoteState(r.state);
           if (done) done(true);
-        } else if ((remote.updatedAt || 0) < (state.updatedAt || 0)) {
+        } else if (r.action === "reseed") {
+          // Our copy should win. If the remote we're rejecting has an equal/newer
+          // timestamp (e.g. an accidental wipe), outrank it so it can't come back.
+          if (remote && (remote.updatedAt || 0) >= (state.updatedAt || 0)) {
+            state.updatedAt = Math.max(Date.now(), (remote.updatedAt || 0) + 1);
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+          }
           schedulePush();
           if (done) done(false);
         } else if (done) { done(false); }
@@ -2798,11 +2957,29 @@
       .catch(function () { syncFail(); if (done) done(false); });
   }
   function adoptRemoteState(remote) {
+    // Preserve this device's backups (and a snapshot of what it had) across the swap,
+    // so an adopt can always be undone from Settings › Backups.
+    var localBackups = Array.isArray(state.backups) ? state.backups : [];
+    var preAdopt = hasData(state) ? makeSnap() : null;
+    writeLKG(); // stash current device data on-device before replacing it
     state = remote;
     migrate();
+    state.backups = mergeBackups(state.backups, localBackups, preAdopt);
     checkRollover();
     checkDailyRollover();
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+    setGreeting();
+    render();
+  }
+  // Replace current state with a saved snapshot (from Backups or boot recovery).
+  function restoreSnapshot(data) {
+    if (!data) return;
+    var keep = Array.isArray(state.backups) ? state.backups.slice() : [];
+    var cur = hasData(state) ? makeSnap() : null;
+    state = JSON.parse(JSON.stringify(data));
+    migrate();
+    state.backups = mergeBackups(state.backups, keep, cur);
+    save(); // bumps updatedAt so the restore wins sync and re-seeds the server
     setGreeting();
     render();
   }
@@ -2921,6 +3098,96 @@
       updateSyncUI();
     });
   });
+
+  // ══ Backups / restore ══
+  var restoreOverlay = document.getElementById("restore-overlay");
+  var restoreArmed = null;
+
+  function summarizeSnap(data) {
+    var st = dataStats(data);
+    var parts = [st.objs + (st.objs === 1 ? " objective" : " objectives")];
+    if (st.spent > 0) parts.push(fmtShort(st.spent) + " total logged");
+    if (st.dlDays > 0) parts.push(st.dlDays + (st.dlDays === 1 ? " day tracked" : " days tracked"));
+    if (st.weeks > 0) parts.push(st.weeks + (st.weeks === 1 ? " past week" : " past weeks"));
+    return parts.join(" · ");
+  }
+  function whenLabel(ts) {
+    var d = new Date(ts);
+    var dk = dayKeyOf(d);
+    var t = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    if (dk === dayKeyOf(new Date())) return "Today, " + t;
+    if (dk === dayKeyOf(new Date(Date.now() - 86400000))) return "Yesterday, " + t;
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + ", " + t;
+  }
+  // On-device last-known-good + the synced dated snapshots, newest first, deduped.
+  function collectRestorePoints() {
+    var pts = [];
+    var lkg = readLKG();
+    if (lkg && hasData(lkg)) pts.push({ ts: lkg.updatedAt || Date.now(), data: lkg, source: "device", weight: dataWeight(lkg) });
+    (state.backups || []).forEach(function (b) {
+      if (b && b.data && hasData(b.data)) pts.push({ ts: b.ts, data: b.data, source: "synced", weight: b.weight || dataWeight(b.data) });
+    });
+    pts.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+    var seen = {}, out = [];
+    pts.forEach(function (p) {
+      var key = dayKeyOf(new Date(p.ts)) + ":" + Math.round(p.weight);
+      if (!seen[key]) { seen[key] = true; out.push(p); }
+    });
+    return out;
+  }
+  function renderRestoreList() {
+    var host = document.getElementById("restore-list");
+    host.innerHTML = "";
+    var pts = collectRestorePoints();
+    if (!pts.length) {
+      host.appendChild(el("p", "restore-empty", "No backups yet — they'll appear here as you use the app."));
+      return;
+    }
+    pts.forEach(function (p, idx) {
+      var row = el("div", "restore-item");
+      if (restoreArmed === idx) row.classList.add("armed");
+      var info = el("div", "restore-info");
+      var when = el("div", "restore-when");
+      when.appendChild(document.createTextNode(whenLabel(p.ts)));
+      if (p.source === "device") when.appendChild(el("span", "tag", "This device"));
+      info.appendChild(when);
+      info.appendChild(el("div", "restore-sum", summarizeSnap(p.data)));
+      row.appendChild(info);
+      var btn = el("button", "btn-secondary", restoreArmed === idx ? "Confirm restore" : "Restore");
+      btn.type = "button";
+      (function (point, i) {
+        btn.addEventListener("click", function () {
+          if (restoreArmed === i) { restoreArmed = null; restoreSnapshot(point.data); closeRestore(); }
+          else { restoreArmed = i; renderRestoreList(); }
+        });
+      })(p, idx);
+      row.appendChild(btn);
+      host.appendChild(row);
+    });
+  }
+  function openRestore(bannerText) {
+    restoreArmed = null;
+    var banner = document.getElementById("restore-banner");
+    if (bannerText) { banner.textContent = bannerText; banner.hidden = false; }
+    else banner.hidden = true;
+    renderRestoreList();
+    restoreOverlay.hidden = false;
+  }
+  function closeRestore() { restoreOverlay.hidden = true; restoreArmed = null; }
+  document.getElementById("restore-close").addEventListener("click", closeRestore);
+  restoreOverlay.addEventListener("click", function (ev) { if (ev.target === this) closeRestore(); });
+  document.getElementById("settings-backups").addEventListener("click", function () { openRestore(null); });
+  document.getElementById("restore-backup-now").addEventListener("click", function () {
+    captureSnapshot(true); save(); renderRestoreList();
+  });
+  // On boot: if this device is missing history it previously had, offer to restore.
+  function checkBootRecovery() {
+    if (!document.getElementById("onboard").hidden) return; // don't cover onboarding
+    var lkg = readLKG();
+    if (lkg && hasData(lkg) && isRegression(lkg, state)) {
+      openRestore("This device is missing history it had before (logged time, streak, or past weeks). Your backups are below — restore one to bring it back. Nothing has been deleted.");
+    }
+  }
 
   // ══ Streak ══
   var STREAK_MIN = 900; // 15 minutes
@@ -3426,7 +3693,7 @@
   document.addEventListener("keydown", function (ev) {
     if (ev.key !== "Escape") return;
     var closedAny = false;
-    [["streak-overlay", closeStreak], ["progress-overlay", closeProgress], ["pomo-overlay", closePomoSetup], ["total-overlay", closeTotalPopup]].forEach(function (pair) {
+    [["streak-overlay", closeStreak], ["progress-overlay", closeProgress], ["pomo-overlay", closePomoSetup], ["total-overlay", closeTotalPopup], ["restore-overlay", closeRestore]].forEach(function (pair) {
       var node = document.getElementById(pair[0]);
       if (node && !node.hidden) { pair[1](); closedAny = true; }
     });
@@ -3442,6 +3709,7 @@
   render();
   updateStreak();
   maybeOnboard();
+  checkBootRecovery();
   updateSyncUI();
   pullRemote();
   setInterval(tick, 1000);
