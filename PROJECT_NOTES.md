@@ -6,14 +6,14 @@ A personal time-tracking web app. You define objectives (e.g. "Linear Algebra co
 - **Repo:** https://github.com/Chimpinski/Weekly-Focus-Tracker (public, default branch `main`)
 - **Live PWA:** https://chimpinski.github.io/Weekly-Focus-Tracker/ (GitHub Pages, serves `main` root)
 - **Local working dir:** `C:\Users\alial\OneDrive - UW\Claude`
-- **Current version:** v1.5.0
+- **Current version:** v1.5.1
 - **Git identity:** user "Ali", pushes over HTTPS via Git Credential Manager (already authenticated)
 
 ## Tech stack & structure
 No framework, no build step. Everything is hand-written HTML/CSS/vanilla JS.
 
 - `index.html` — the **entire app** (~3,200 lines): all markup, CSS in one `<style>`, logic in one IIFE `<script>`. This is where ~all work happens.
-- `sw.js` — service worker. **Network-first for the page** (so updates reach installed PWAs), cache-first for assets. Bump the `CACHE` const (currently `"wft-v8"`) on each release.
+- `sw.js` — service worker. **Network-first for the page** (so updates reach installed PWAs), cache-first for assets. Bump the `CACHE` const (currently `"wft-v9"`) on each release.
 - `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png` — PWA install assets.
 - `assets/icon.png` — 1024px source icon; CI generates native app icons from it.
 - `capacitor.config.json` — `appId: com.chimpinski.weeklyfocus`, `appName: "Focus Timer"`, `webDir: "www"`, `ios.contentInset: "never"`, `backgroundColor: "#101615"`.
@@ -58,6 +58,7 @@ There's a `migrate()` run on load and after adopting synced state that backfills
 - **Sync backend = textdb.online** (a free, no-signup, CORS-open key-value store). Chosen after testing ~5 services; others lacked CORS or required accounts/captchas. Sync uses a random code `WFT-XXXX-XXXX-XXXX`; the key is `"wft" + code-without-dashes, lowercased`. POSTs are form-encoded to avoid a CORS preflight. Automatic resets use a `persistLocal()` that does **not** bump `updatedAt`, so devices don't fight over deterministic resets. Tradeoffs: it's a free community service (retention not guaranteed) and the code is the only secret (treat like a password).
 - **Sync arbitration is a pure function `resolveSync(local, remote) → {action:"adopt"|"reseed"|"noop", state?}`** (v1.5.0), so it's unit-testable without the network. It's last-write-wins on `updatedAt` **except** it will not adopt a copy that wipes or sharply shrinks history (empty `dailyLog`/`weekHistory`/objectives, or `dataWeight` more than halved) unless the reduction was intentional (`remote.lastDestructiveAt > local.lastDestructiveAt`). On such a "reseed", it also bumps local `updatedAt` above the rejected remote so the accidental wipe can't keep winning. **This exists because v1.4.0-era sync wiped everyone's progress** when the server returned an objectives-intact-but-progress-zeroed copy with a newer timestamp. `dataStats`/`dataWeight` measure *durable* history (cumulative `totalSpentSeconds`, `dailyLog`, `weekHistory`, streak) and deliberately ignore weekly `spentSeconds`, which resets every Monday. Don't "simplify" this back to plain last-write-wins.
 - **Redundancy:** rolling in-state `backups` + on-device LKG + a boot-time regression check (`checkBootRecovery`) that offers a restore. `adoptRemoteState` merges backups from both sides and stashes a pre-adopt snapshot so an adopt/connect is always reversible from Settings › Backups.
+- **Pull-before-push on open (v1.5.1) — do not reorder.** Boot no longer runs `checkRollover`/`checkDailyRollover`/`checkBootRecovery` or starts the `tick` loop synchronously. Instead it renders local data immediately, then `pullRemote(finishBoot)` reconciles with the server first; `finishBoot()` (idempotent, with an 8s network-stall fallback) runs the rollovers, starts `tick`, and unblocks pushing. Pushes are gated by `pushBlockedByBoot`/`pendingBootPush` until then. **Why:** a stale device opening after a week boundary used to run its rollover first, stamp the reset week as newest, and push it — clobbering another device's recent progress. `visibilitychange` uses the same pull-first order (`pullRemote(() => { checkRollover(); checkDailyRollover(); render(); })`). The regression guard alone does **not** catch this (only the current week's small delta is lost, not a bulk wipe), so the ordering matters.
 - **Streak derived from `dailyLog`**, not a stored counter — robust across sync and time changes.
 - **iOS Live Activity was built (v1.1.1) then removed (v1.2.0)** because signing services (you use **Signulous**) reject the required app extension. The native Swift/widget files were deleted but **still exist in git history** (harmless, not built). Don't re-add app extensions.
 - iOS full-bleed handled via `viewport-fit=cover` + safe-area insets; inputs are 16px and zoom is disabled so iOS doesn't zoom on focus.

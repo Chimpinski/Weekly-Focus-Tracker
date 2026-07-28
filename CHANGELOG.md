@@ -12,6 +12,11 @@ project uses [semantic versioning](https://semver.org/).
 
 _Nothing yet._
 
+## [1.5.1] - 2026-07-28
+
+### Fixed
+- **Opening the app on a second device could wipe your latest progress.** A device that had been idle would, on open, run its weekly rollover and push that (stale, reset) copy to the server *before* fetching the newer data — stamping the old copy as "newest" and overwriting the time you'd just tracked elsewhere. The app now **pulls and reconciles with the server first**, and only then rolls over, snapshots, or pushes. Same order when returning to the app after it's been in the background. No more needing to restore a backup after switching devices.
+
 ## [1.5.0] - 2026-07-26
 
 ### Fixed
@@ -102,7 +107,8 @@ _Nothing yet._
 - Installable PWA (web manifest, app icons, offline service worker).
 - An unsigned `.ipa` attached to the release for personal sideloading.
 
-[Unreleased]: https://github.com/Chimpinski/Weekly-Focus-Tracker/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/Chimpinski/Weekly-Focus-Tracker/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.5.1
 [1.5.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.5.0
 [1.4.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.4.0
 [1.3.1]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.3.1

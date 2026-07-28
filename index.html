@@ -2913,6 +2913,11 @@
   function syncOk() { syncError = false; syncLastOk = Date.now(); updateSyncUI(); }
   function syncFail() { syncError = true; updateSyncUI(); }
 
+  // On open, don't push local data until we've pulled the server's latest first —
+  // otherwise a stale device can stamp old data as "newest" and clobber other devices.
+  var pushBlockedByBoot = true;
+  var pendingBootPush = false;
+
   function schedulePush() {
     if (!getSyncCode()) return;
     clearTimeout(syncPushTimer);
@@ -2921,6 +2926,7 @@
   function pushRemote() {
     var code = getSyncCode();
     if (!code) return;
+    if (pushBlockedByBoot) { pendingBootPush = true; return; } // hold until the initial pull reconciles
     var body = new URLSearchParams();
     body.append("key", syncKeyFromCode(code));
     body.append("value", JSON.stringify(state));
@@ -3702,20 +3708,39 @@
 
   // ── Boot ──
   load();
-  checkRollover();
-  checkDailyRollover();
   setGreeting();
   setMotiv();
-  render();
+  render();          // show local data immediately (responsive, and works offline)
   updateStreak();
   maybeOnboard();
-  checkBootRecovery();
   updateSyncUI();
-  pullRemote();
-  setInterval(tick, 1000);
+
+  // Reconcile with the server BEFORE rolling over, snapshotting, or pushing. A freshly
+  // opened (possibly stale) device must adopt newer remote data first — otherwise its
+  // boot-time weekly rollover would stamp a reset week as "newest" and clobber the other
+  // devices' recent progress. The live tick (which also rolls over) waits until then too.
+  var bootFinished = false;
+  function finishBoot() {
+    if (bootFinished) return;
+    bootFinished = true;
+    checkRollover();      // now safe: runs on the reconciled (possibly adopted) state
+    checkDailyRollover();
+    render();
+    updateStreak();
+    checkBootRecovery();
+    pushBlockedByBoot = false;
+    if (pendingBootPush) { pendingBootPush = false; schedulePush(); }
+    setInterval(tick, 1000);
+  }
+  pullRemote(finishBoot);                          // no sync code → resolves immediately
+  if (getSyncCode()) setTimeout(finishBoot, 8000); // safety net if the network stalls
+
   setInterval(function () { if (!document.hidden) pullRemote(); }, 45000);
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) { checkRollover(); checkDailyRollover(); pullRemote(); render(); }
+    if (!document.hidden) {
+      // Pull first, then roll over on the reconciled state (same reason as boot).
+      pullRemote(function () { checkRollover(); checkDailyRollover(); render(); });
+    }
   });
 })();
 </script>
