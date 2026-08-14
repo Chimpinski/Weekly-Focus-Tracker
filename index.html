@@ -2922,9 +2922,11 @@
   var notifyReady = false;   // wired up at boot; guards the save() hooks before then
   var notifyPerm = false;    // permission actually granted on this device
   var notifyAway = false;    // set on the way out, since pagehide has document.hidden false
+  var notifyAwaySince = 0;   // when you left, so the grace period can't keep sliding forward
   var notifyTimer = null;
   var webPlan = [];          // the web backend's pending plan (fires only while open)
   var webSent = {};          // plan key -> true, so a sweep can't fire the same thing twice
+  var lastPlanSig = null;    // fingerprint of the last applied plan, to skip no-op re-applies
   var swReg = null;          // cached eagerly: on hide the page can freeze before a promise resolves
 
   function defaultNotifyPrefs() {
@@ -3039,8 +3041,18 @@
   // cancel something that was just scheduled — the whole plan goes in one pair of calls.
   function applyNotifyPlan(plan) {
     var now = Date.now();
+    // save() runs often, and the plan usually comes out identical. Re-issuing it
+    // would churn the native bridge for nothing, so compare first. Times are
+    // compared to the second, since a running timer's due moment drifts by µs.
+    var sig = plan.map(function (n) {
+      return n.id + "@" + Math.round(n.at / 1000) + "|" + n.title + "|" + n.body;
+    }).join(";");
+    var unchanged = sig === lastPlanSig;
+    lastPlanSig = sig;
+
     var N = nativeNotify();
     if (N) {
+      if (unchanged) return;
       var toSchedule = plan.map(function (n) {
         return {
           id: n.id,
@@ -3200,7 +3212,11 @@
       saveNotifyPrefs();
     }
     if (wp.at <= Date.now()) return;
-    var q = pick(QUOTES);
+    // Same quote all week — a fresh random one on every replan would rewrite an
+    // already-scheduled notification for no reason.
+    var seed = 0;
+    for (var i = 0; i < wk.length; i++) seed += wk.charCodeAt(i);
+    var q = QUOTES[seed % QUOTES.length];
     plan.push({
       id: NOTIFY_IDS.weekly,
       key: "week:" + wk,
@@ -3232,7 +3248,9 @@
       key: "run:" + running.startedAt,
       title: "Timer still running",
       body: running.name + " is still being tracked. Pause it if you've stopped.",
-      at: immediate ? Date.now() : Date.now() + RUN_GRACE_MS
+      // Anchored to when you left, so a replan while backgrounded can't keep
+      // pushing the warning another two minutes into the future.
+      at: immediate ? Date.now() : (notifyAwaySince || Date.now()) + RUN_GRACE_MS
     });
   }
 
@@ -4313,10 +4331,12 @@
       // Synchronously: iOS can freeze the page the moment this returns, and the
       // away-only reminders are planned from exactly this transition.
       notifyAway = true;
+      if (!notifyAwaySince) notifyAwaySince = Date.now();
       refreshNotificationsNow();
       return;
     }
     notifyAway = false;
+    notifyAwaySince = 0;
     // Pull first, then roll over on the reconciled state (same reason as boot).
     pullRemote(function () { checkRollover(); checkDailyRollover(); render(); });
     refreshNotifications(); // back in the app — drops the away-only reminders
@@ -4324,6 +4344,7 @@
   // Belt and braces for iOS home-screen apps, where pagehide is the more reliable exit.
   window.addEventListener("pagehide", function () {
     notifyAway = true;
+    if (!notifyAwaySince) notifyAwaySince = Date.now();
     refreshNotificationsNow();
   });
 })();
