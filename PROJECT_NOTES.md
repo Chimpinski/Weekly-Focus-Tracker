@@ -6,18 +6,18 @@ A personal time-tracking web app. You define objectives (e.g. "Linear Algebra co
 - **Repo:** https://github.com/Chimpinski/Weekly-Focus-Tracker (public, default branch `main`)
 - **Live PWA:** https://chimpinski.github.io/Weekly-Focus-Tracker/ (GitHub Pages, serves `main` root)
 - **Local working dir:** `C:\Users\alial\OneDrive - UW\Claude`
-- **Current version:** v1.5.1
+- **Current version:** v1.6.0
 - **Git identity:** user "Ali", pushes over HTTPS via Git Credential Manager (already authenticated)
 
 ## Tech stack & structure
 No framework, no build step. Everything is hand-written HTML/CSS/vanilla JS.
 
-- `index.html` — the **entire app** (~3,200 lines): all markup, CSS in one `<style>`, logic in one IIFE `<script>`. This is where ~all work happens.
-- `sw.js` — service worker. **Network-first for the page** (so updates reach installed PWAs), cache-first for assets. Bump the `CACHE` const (currently `"wft-v9"`) on each release.
+- `index.html` — the **entire app** (~4,300 lines): all markup, CSS in one `<style>`, logic in one IIFE `<script>`. This is where ~all work happens.
+- `sw.js` — service worker. **Network-first for the page** (so updates reach installed PWAs), cache-first for assets, plus a `notificationclick` handler that focuses/opens the app. Bump the `CACHE` const (currently `"wft-v10"`) on each release.
 - `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png` — PWA install assets.
 - `assets/icon.png` — 1024px source icon; CI generates native app icons from it.
 - `capacitor.config.json` — `appId: com.chimpinski.weeklyfocus`, `appName: "Focus Timer"`, `webDir: "www"`, `ios.contentInset: "never"`, `backgroundColor: "#101615"`.
-- `package.json` — version + Capacitor 6 deps (`@capacitor/core`, `@capacitor/ios`, `@capacitor/cli`, `@capacitor/assets`).
+- `package.json` — version + Capacitor 6 deps (`@capacitor/core`, `@capacitor/ios`, `@capacitor/local-notifications`, `@capacitor/cli`, `@capacitor/assets`).
 - `.github/workflows/build-ipa.yml` — CI that builds the `.ipa` and publishes the release.
 - `README.md`, `CHANGELOG.md`, `docs/preview-*.png` (3 same-size README previews).
 - `.gitignore` — ignores `node_modules/`, `/ios/`, `www/`, `dist/`, `*.ipa`, `.claude/settings.local.json`, `.claude/launch.json`.
@@ -34,7 +34,7 @@ Main key `weekly-focus-timer-v1` holds one `state` object:
 - `backups: [{ts, dayKey, weight, data}]` — rolling dated snapshots (one/day, cap 14) that **ride along inside the synced state**; `data` is a full state minus its own `backups` (no recursion) and minus the live timer. `lastDestructiveAt` (ms) — set by `markDestructive()` on intentional reductions (delete objective, reset time, subtract, clear total) so those legitimately sync.
 - Separate localStorage key `weekly-focus-timer-lkg` — an on-device **last-known-good** copy (a `snapshotOf(state)`), written on each non-empty `save()` and never downgraded unless the reduction was intentional.
 
-Separate keys: `wft-theme` (`system|light|dark`), `wft-progress` (`bar|ring`), `wft-sync-code` (`WFT-XXXX-XXXX-XXXX`).
+Separate keys: `wft-theme` (`system|light|dark`), `wft-progress` (`bar|ring`), `wft-sync-code` (`WFT-XXXX-XXXX-XXXX`), `wft-notify` (notification prefs — see below).
 
 There's a `migrate()` run on load and after adopting synced state that backfills any new fields, so adding fields is safe.
 
@@ -51,6 +51,7 @@ There's a `migrate()` run on load and after adopting synced state that backfills
 - **Total objective time (limited tasks):** optional `totalGoalSeconds`; right-side `.total-panel` on the card with a small full-circle ring (`TR_R`/`TR_C`, % inside) + "Xh left / of Yh / since …"; completion fires a **"Task complete"** announcement then a congrats popup (`#total-overlay`) with **Clear & start fresh** (commits time, zeros the total, restarts `totalStartKey` today).
 - **Full-screen task view:** per-card expand button toggles `fullscreenId`; `render()` shows only that card and sets `body.fs-mode`, which hides header/summary/footer/FAB and enlarges the card (works for normal and pomodoro cards). Exit via the button or Escape.
 - **Sound + announcements:** synthesized **WebAudio** stopwatch beeps (`playStopwatchBeeps` — 2 beeps × 3, no asset files) plus a full-screen glowing word (`#announce-overlay`, `showAnnouncement`). Pomodoro focus↔break shows **BREAK/FOCUS** for ~2.4s (via `pomoAnnouncing` guard) before the next block starts; daily/weekly goals and total completion announce without stopping a running timer. Celebrations now run through one sequential `eventQueue` (`enqueueAnnounce`/`enqueueCelebration`/`enqueueTotalComplete`). Audio is unlocked on first gesture (`unlockAudio`).
+- **Notifications (v1.6.0, off by default):** Settings › Notifications has a master switch, four category switches (daily goal reminder / weekly nudge / forgot-to-pause / away alerts) and a quiet-hours window. See the section under Key decisions for how it's built and what each platform can actually deliver.
 - **Backups & restore (Settings):** `#restore-overlay` lists restore points (on-device LKG + in-state snapshots) with dates + a `summarizeSnap` line; two-tap confirm restores via `restoreSnapshot` (bumps `updatedAt` so the restore wins sync). "Back up now" forces a snapshot. See the sync hardening under Key decisions.
 
 ## Key decisions & tradeoffs
@@ -60,7 +61,17 @@ There's a `migrate()` run on load and after adopting synced state that backfills
 - **Redundancy:** rolling in-state `backups` + on-device LKG + a boot-time regression check (`checkBootRecovery`) that offers a restore. `adoptRemoteState` merges backups from both sides and stashes a pre-adopt snapshot so an adopt/connect is always reversible from Settings › Backups.
 - **Pull-before-push on open (v1.5.1) — do not reorder.** Boot no longer runs `checkRollover`/`checkDailyRollover`/`checkBootRecovery` or starts the `tick` loop synchronously. Instead it renders local data immediately, then `pullRemote(finishBoot)` reconciles with the server first; `finishBoot()` (idempotent, with an 8s network-stall fallback) runs the rollovers, starts `tick`, and unblocks pushing. Pushes are gated by `pushBlockedByBoot`/`pendingBootPush` until then. **Why:** a stale device opening after a week boundary used to run its rollover first, stamp the reset week as newest, and push it — clobbering another device's recent progress. `visibilitychange` uses the same pull-first order (`pullRemote(() => { checkRollover(); checkDailyRollover(); render(); })`). The regression guard alone does **not** catch this (only the current week's small delta is lost, not a bulk wipe), so the ordering matters.
 - **Streak derived from `dailyLog`**, not a stored counter — robust across sync and time changes.
-- **iOS Live Activity was built (v1.1.1) then removed (v1.2.0)** because signing services (you use **Signulous**) reject the required app extension. The native Swift/widget files were deleted but **still exist in git history** (harmless, not built). Don't re-add app extensions.
+- **iOS Live Activity was built (v1.1.1) then removed (v1.2.0)** because signing services (you use **Signulous**) reject the required app extension. The native Swift/widget files were deleted but **still exist in git history** (harmless, not built). Don't re-add app extensions. A Live Activity / Notification-Center progress bar is **settled as impossible** both ways: there is no web API for it at all, and the native route needs exactly the widget extension that gets rejected. Don't re-investigate.
+- **Notifications (v1.6.0) — one planner, two backends, no server.** All in the `══ Notifications ══` block of `index.html`.
+  - **Prefs live in their own `wft-notify` key, outside the synced state** (like `wft-theme`). Deliberate: permission is per-device anyway, and staying out means they can't perturb the v1.5.0 sync regression guards or the backup `dataWeight`. Shape: `{on, daily, weekly, running, events, from, to, picks:{dayKey:ms}, weekPick:{week,at}, pingedRun, sentDay, sentWeek}`.
+  - **Backends:** native = `window.Capacitor.Plugins.LocalNotifications` (works with no bundler — Capacitor injects the bridge into the WebView); web = `ServiceWorkerRegistration.showNotification()`, **never** page-level `new Notification()`, which iOS home-screen web apps don't implement at all. The SW registration is cached eagerly into `swReg` because on hide the page can freeze before a promise resolves.
+  - **`@capacitor/local-notifications` is safe for the unsigned IPA** — no entitlement, no app extension, unlike APNs push (`aps-environment` + a signed profile). It does not recreate the signing problem.
+  - **Core design:** `refreshNotifications()` rebuilds the *entire* schedule from state and applies it as **one batched cancel-then-schedule** (`applyNotifyPlan`). Per-id native calls race and can cancel what was just scheduled — keep it batched. Debounced ~500ms off `save()`/`persistLocal()`, but called **synchronously on hide** (`refreshNotificationsNow`) since the page may freeze immediately after. Four planners push into a plan array: `planDailyReminder`, `planWeeklyNudge`, `planRunningReminder`, `planEventAlerts`; the last two only plan while hidden, so returning to the app clears them automatically.
+  - **IDs must be small ints** (iOS wants Int32 and caps pending notifications at 64): running=1, pomo=2, goalDaily=3, goalWeekly=4, goalTotal=5, dailyBase=10..16, weekly=30, oneOff=40. A full plan is ~12.
+  - **The web genuinely cannot schedule a future notification** — Notification Triggers (`TimestampTrigger`) never shipped outside a dead Chrome origin trial. The web backend therefore keeps the plan in memory and sweeps it on a timer, so it only fires while the app is open. `applyNotifyPlan` sweeps the *outgoing* plan before swapping, so a replan can't drop an alert that just came due.
+  - **A push server was considered and rejected** (Cloudflare Worker + cron): needs an account, VAPID keys, and monitoring, against a project whose whole point is a single static file. Only revisit if explicitly asked.
+  - **Details that matter:** the daily reminder pre-schedules 7 days ahead with a fresh random time per day inside the quiet window, and future days get generic text (you can't know then what'll be outstanding — opening the app that day rewrites it with the real list); goal "left" figures round up via `fmtShort(Math.max(60, secs))` or a nearly-done goal reads "0m left"; forgot-to-pause must **not** fire during a Pomodoro (it pauses itself); on iOS web it's sent as you leave, rate-limited once per run via `pingedRun` keyed on `startedAt`, or deliberately tracking time in another app pings on every app switch; the weekly nudge body reuses `QUOTES`.
+  - **Delivery is honestly stated** in Settings (`notifySupportLine()`), the README, and CHANGELOG — it differs a lot between the `.ipa`, an iOS home-screen PWA, and a desktop browser.
 - iOS full-bleed handled via `viewport-fit=cover` + safe-area insets; inputs are 16px and zoom is disabled so iOS doesn't zoom on focus.
 
 ## Known issues / unfinished
@@ -74,6 +85,16 @@ There's a `migrate()` run on load and after adopting synced state that backfills
 ## Environment note for verification
 In this environment the **in-app browser-pane screenshot tool times out** — don't rely on it. Verify functionally via JS eval / DOM inspection, and for **visual** checks use **headless Edge** (this works):
 `"/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" --headless=new --disable-gpu --no-sandbox --no-first-run --user-data-dir=<fresh temp profile> --hide-scrollbars --force-device-scale-factor=2 --virtual-time-budget=2500 --window-size=W,H --screenshot=out.png <url>` — serve the dir with `python -m http.server`, and inject a small seed `<script>` into `<head>` to prime `localStorage`/open a modal for the shot. Poll for the output file (Edge's launcher returns before the render finishes).
+
+### Driving the app in a real browser (used for the v1.6.0 notification tests)
+No Playwright/Puppeteer browsers are installed, but `npm i puppeteer-core` in a scratch dir plus the local Edge binary works: `puppeteer.launch({executablePath: "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe", headless: "new", userDataDir: <fresh temp dir>})`. **The fresh `userDataDir` is required** — without it Edge hands off to the running instance and the launch fails with "Code: 0". Serve the repo over `http://localhost` (a tiny Node static server) rather than `file://`, or there's no service worker and no secure context. Gotchas that cost time:
+- Seed `localStorage` from `evaluateOnNewDocument`, not `evaluate()` — the app owns `wft-notify` and rewrites it from memory while running, so a plain write gets clobbered.
+- Anchor any seeded timestamps to the **page's** clock inside that init script; computing them in Node lets page-load latency eat the lead time, and a moment that's already past is correctly skipped.
+- `localStorage.removeItem("weekly-focus-timer-lkg")` in the seed, or `checkBootRecovery()` pops `#restore-overlay` over the UI and swallows clicks.
+- You can't really background a headless page — fake it with `Object.defineProperty(document, "hidden", {get: () => true})` then dispatch `visibilitychange`.
+- Test the native path with a fake `window.Capacitor = {isNativePlatform: () => true, Plugins: {LocalNotifications: {...}}}` and assert on the batched cancel/schedule payloads; test the web path by stubbing `ServiceWorkerRegistration.prototype.showNotification` to record calls.
+- Serving a copy of `index.html` with the timing constants shrunk (`RUN_GRACE_MS`, `WEB_SWEEP_MS`) makes the 2-minute grace testable in seconds.
+- Card button classes: Begin is `button.btn-primary`, Pause is `button.btn-pause`.
 
 ## Building the unsigned IPA (exact)
 **You cannot build on Windows** — it's macOS/Xcode only. It's done entirely in CI:

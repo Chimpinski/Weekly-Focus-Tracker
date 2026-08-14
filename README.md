@@ -26,6 +26,7 @@ Toggle between the two progress styles and light/dark themes from Settings, and 
 - **Streaks** — a header flame that lights once you log 15 minutes for the day and grows your day count, with milestone celebrations and an optional "skip weekends" rule.
 - **Pomodoro mode** — start focus/break cycles on any objective with an optional total focus time; only focus blocks count toward your goal.
 - **Rewarding completions** — a congratulations popup when you finish an objective or your whole week; daily goals glow when hit.
+- **Notifications (off by default)** — an optional daily reminder of the goals you haven't hit yet (one message listing them all), a weekly motivational nudge, a warning if you leave with a timer running, and alerts while you're out of the app when a goal is reached or Pomodoro changes phase. Quiet hours included. See [what reaches you where](#notifications).
 - **Cross-device sync, no account** — create a sync code on one device and enter it on another; both show the same timers (even a running one). The code is the only key to your data, so treat it like a password.
 - **Automatic resets** — weekly goals zero out every Monday, daily goals every midnight; your goals themselves stay.
 - **First-run setup** — asks your name and walks you through creating your first objective, then greets you by name.
@@ -54,3 +55,23 @@ Two ways to get it on your phone:
 **Option B — Sideload the `.ipa` (native app).** Every [release](https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/latest) attaches an **unsigned `.ipa`** (`WeeklyFocusTimer-unsigned.ipa`). Download it and install with a sideloading tool such as **AltStore**, **Sideloadly**, or a signing service — they sign it with your own Apple ID at install time. Bundle ID `com.chimpinski.weeklyfocus`, min iOS 13.
 
 Either way your logged time is stored on the device — use the same install (or turn on sync) to keep your history. The PWA and the sideloaded app are separate installs with separate storage, so pick one as your main, or link them with a sync code.
+
+## Notifications
+
+Notifications are **off by default**. Turn them on in **Settings › Notifications**, where each kind has its own switch and you can set quiet hours.
+
+What actually reaches you depends on where the app is running:
+
+| | Sideloaded `.ipa` | iPhone Home-Screen app | Desktop / Android browser |
+| --- | --- | --- | --- |
+| Daily goal reminder | with the app closed | only while open | only while the tab is open |
+| Weekly nudge | with the app closed | only while open | only while the tab is open |
+| Forgot to pause | 2-minute grace, cancels if you return | sent as you leave instead | 2-minute grace |
+| Goal / Pomodoro away alert | exact | not possible | yes, up to ~1 min late |
+
+Two things set the limits, and neither has a workaround:
+
+- **The web can't schedule a notification for later.** Notification Triggers never shipped outside a dead Chrome origin trial, so real scheduling would need a push server — deliberately not part of this project.
+- **iOS freezes backgrounded web pages**, so nothing in a web build can fire once you've left it. Only the sideloaded `.ipa` reaches you with the app closed.
+
+On iPhone the web app must be **added to the Home Screen** (iOS 16.4+) for notifications to exist at all — a plain Safari tab has no Notification API. Settings states the limits for whichever build you're on.

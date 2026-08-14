@@ -12,6 +12,31 @@ project uses [semantic versioning](https://semver.org/).
 
 _Nothing yet._
 
+## [1.6.0] - 2026-08-14
+
+### Added
+- **Notifications — off by default, with a switch for each kind.** Turn them on in Settings › Notifications:
+  - **Daily goal reminder** at a random point in the day. If several goals are still short you get **one** notification listing them all, with how much time is left on each — never one per goal. It stays quiet when you've already hit everything.
+  - **Weekly nudge** — a line of encouragement at a different day and time each week.
+  - **Forgot to pause** — a heads-up if you leave the app with a timer still running, so you don't come back to hours you didn't work. It doesn't fire during a Pomodoro, which pauses itself.
+  - **Away alerts** — when you're out of the app, hear about it the moment a daily, weekly, or limited-task goal is reached, or when Pomodoro switches between focus and break.
+- **Quiet hours.** Reminders are only sent inside a window you set (9 AM–9 PM by default).
+
+### Changed
+- The Settings sheet now scrolls inside itself instead of growing past the bottom of the screen, so **Done** stays reachable on a phone.
+
+### Notes
+How much of this reaches you depends on where the app is running, and Settings says so plainly:
+
+| | Sideloaded `.ipa` | iPhone Home-Screen app | Desktop / Android browser |
+|---|---|---|---|
+| Daily reminder | with the app closed | only while open | only while the tab is open |
+| Weekly nudge | with the app closed | only while open | only while the tab is open |
+| Forgot to pause | 2-minute grace, cancels if you return | sent **as you leave** instead | 2-minute grace |
+| Goal / Pomodoro away alert | exact | not possible | yes, up to ~1 min late |
+
+On iPhone the web app must be **added to the Home Screen** (iOS 16.4+) to have notifications at all — a plain Safari tab has none. The sideloaded `.ipa` is the only build that can reach you with the app fully closed; iOS freezes backgrounded web pages, and the web has no way to schedule a notification for later.
+
 ## [1.5.1] - 2026-07-28
 
 ### Fixed
@@ -107,7 +132,8 @@ _Nothing yet._
 - Installable PWA (web manifest, app icons, offline service worker).
 - An unsigned `.ipa` attached to the release for personal sideloading.
 
-[Unreleased]: https://github.com/Chimpinski/Weekly-Focus-Tracker/compare/v1.5.1...HEAD
+[Unreleased]: https://github.com/Chimpinski/Weekly-Focus-Tracker/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.6.0
 [1.5.1]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.5.1
 [1.5.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.5.0
 [1.4.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.4.0

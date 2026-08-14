@@ -450,6 +450,12 @@
     max-width: 460px;
     padding: 20px;
     animation: modal-in 0.2s ease;
+    /* Contain the scroll inside the sheet — without this a long Settings body
+       pushes the Done button off the bottom of a phone screen. */
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   @keyframes modal-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
   @media (prefers-reduced-motion: reduce) { .modal { animation: none; } }
@@ -514,6 +520,15 @@
   }
   .settings-actions { margin-top: 18px; }
   .settings-actions .btn-primary { width: 100%; justify-content: center; padding: 13px; font-size: 16px; }
+
+  /* ── Notifications ── */
+  #notify-details { display: flex; flex-direction: column; gap: 12px; margin-top: 2px; }
+  #notify-details[hidden] { display: none; }
+  .notify-window { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
+  .notify-times { display: flex; align-items: center; gap: 8px; }
+  .notify-times input { flex: 1; width: auto; min-height: 44px; padding: 10px 12px; }
+  .notify-times span { font-size: 13px; color: var(--muted); flex-shrink: 0; }
+  .notify-note { font-size: 12px; color: var(--faint); margin: 0; line-height: 1.45; }
 
   /* ── Sync ── */
   .sync-box { display: flex; flex-direction: column; gap: 10px; }
@@ -1172,6 +1187,41 @@
         </div>
       </div>
       <div class="setting-field">
+        <span class="setting-label">Notifications</span>
+        <div class="pomo-optrow">
+          <span class="sync-hint" style="flex:1">Off by default. Turn on for goal reminders, a weekly nudge, and alerts while you're out of the app.</span>
+          <button type="button" class="toggle" id="notify-toggle" role="switch" aria-label="Notifications"></button>
+        </div>
+        <p class="sync-error" id="notify-error" hidden></p>
+        <div id="notify-details" hidden>
+          <div class="pomo-optrow">
+            <span class="sync-hint" style="flex:1">Daily goal reminder — once at a random time, in one message listing every goal still short.</span>
+            <button type="button" class="toggle" id="notify-daily" role="switch" aria-label="Daily goal reminder"></button>
+          </div>
+          <div class="pomo-optrow">
+            <span class="sync-hint" style="flex:1">Weekly nudge — a bit of encouragement at a different day and time each week.</span>
+            <button type="button" class="toggle" id="notify-weekly" role="switch" aria-label="Weekly nudge"></button>
+          </div>
+          <div class="pomo-optrow">
+            <span class="sync-hint" style="flex:1">Forgot to pause — a heads-up if you leave with a timer still running.</span>
+            <button type="button" class="toggle" id="notify-running" role="switch" aria-label="Forgot to pause"></button>
+          </div>
+          <div class="pomo-optrow">
+            <span class="sync-hint" style="flex:1">Away alerts — tell me when a goal is reached or Pomodoro switches focus and break.</span>
+            <button type="button" class="toggle" id="notify-events" role="switch" aria-label="Away alerts"></button>
+          </div>
+          <div class="notify-window">
+            <span class="setting-label">Quiet hours — only notify between</span>
+            <div class="notify-times">
+              <input type="time" id="notify-from" aria-label="Earliest notification time">
+              <span>and</span>
+              <input type="time" id="notify-to" aria-label="Latest notification time">
+            </div>
+          </div>
+          <p class="notify-note" id="notify-support"></p>
+        </div>
+      </div>
+      <div class="setting-field">
         <span class="setting-label">Sync between devices</span>
         <div class="sync-box" id="sync-off">
           <p class="sync-hint">See the same timers on your phone and PC — no account needed. Create a code on one device, then enter it on the other.</p>
@@ -1466,6 +1516,7 @@
     // Save without bumping the sync timestamp (used for automatic resets that
     // each device computes deterministically, so they needn't fight over sync).
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+    scheduleNotifyRefresh();
   }
   function save() {
     state.updatedAt = Math.max(Date.now(), (state.updatedAt || 0) + 1); // monotonic for last-write-wins sync
@@ -1473,6 +1524,7 @@
     writeLKG();             // on-device last-known-good
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* private mode */ }
     schedulePush();
+    scheduleNotifyRefresh(); // the schedule is derived from state, so rebuild it
   }
   function load() {
     try {
@@ -2813,7 +2865,11 @@
     settingsName.value = state.userName || "";
     weekendsToggle.classList.toggle("on", !!state.excludeWeekends);
     syncSettingsToggles();
+    renderNotifySettings();
     settingsOverlay.hidden = false;
+    // The sheet scrolls internally now, so start it at the top each time it opens.
+    var sheet = settingsOverlay.querySelector(".modal");
+    if (sheet) sheet.scrollTop = 0;
   }
   function closeSettings() {
     var name = settingsName.value.trim();
@@ -2838,6 +2894,521 @@
   if (window.matchMedia) {
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
       if (currentThemePref() === "system") renderSummary();
+    });
+  }
+
+  // ══ Notifications ══
+  // Two backends behind one API:
+  //   • Native (sideloaded .ipa) — Capacitor's LocalNotifications, reachable as
+  //     window.Capacitor.Plugins with no bundler because the bridge is injected into
+  //     the WebView. Local notifications need no entitlement and no app extension, so
+  //     they don't recreate the signing problem that killed the Live Activity.
+  //   • Web — ServiceWorkerRegistration.showNotification(), never the page-level
+  //     `new Notification()`, which iOS home-screen web apps don't implement at all.
+  // The web genuinely cannot schedule anything for the future (Notification Triggers
+  // never shipped), so its plan is swept by a timer and only fires while the app is
+  // open. That difference is stated honestly in Settings rather than papered over.
+  var NOTIFY_KEY = "wft-notify";  // own key, outside the synced state (like wft-theme):
+                                  // permission is per-device, and keeping it out means
+                                  // it can't perturb the sync guards or backup weights.
+  // Small ints only — iOS wants Int32 ids and caps pending notifications at 64.
+  var NOTIFY_IDS = { running: 1, pomo: 2, goalDaily: 3, goalWeekly: 4, goalTotal: 5, dailyBase: 10, weekly: 30, oneOff: 40 };
+  var NOTIFY_ALL_IDS = [1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 15, 16, 30, 40];
+  var NOTIFY_DAYS = 7;                // pre-schedule a week of daily reminders
+  var RUN_GRACE_MS = 2 * 60 * 1000;   // grace before "you left a timer running"
+  var WEB_SWEEP_MS = 20000;
+
+  var notifyPrefs = loadNotifyPrefs();
+  var notifyReady = false;   // wired up at boot; guards the save() hooks before then
+  var notifyPerm = false;    // permission actually granted on this device
+  var notifyAway = false;    // set on the way out, since pagehide has document.hidden false
+  var notifyTimer = null;
+  var webPlan = [];          // the web backend's pending plan (fires only while open)
+  var webSent = {};          // plan key -> true, so a sweep can't fire the same thing twice
+  var swReg = null;          // cached eagerly: on hide the page can freeze before a promise resolves
+
+  function defaultNotifyPrefs() {
+    return {
+      on: false, daily: true, weekly: true, running: true, events: true,
+      from: 9 * 60, to: 21 * 60,   // quiet-hours window, minutes past midnight
+      picks: {},                   // dayKey -> ms, today's and the next week's random moments
+      weekPick: null,              // {week, at} for the weekly nudge
+      pingedRun: null,             // startedAt already warned about (iOS web rate limit)
+      sentDay: null, sentWeek: null
+    };
+  }
+  function loadNotifyPrefs() {
+    var p = defaultNotifyPrefs();
+    try {
+      var raw = JSON.parse(localStorage.getItem(NOTIFY_KEY) || "null");
+      if (raw && typeof raw === "object") {
+        Object.keys(p).forEach(function (k) {
+          if (typeof raw[k] !== "undefined") p[k] = raw[k];
+        });
+      }
+    } catch (e) { /* corrupted or unavailable — defaults are fine */ }
+    if (!p.picks || typeof p.picks !== "object") p.picks = {};
+    return p;
+  }
+  function saveNotifyPrefs() {
+    try { localStorage.setItem(NOTIFY_KEY, JSON.stringify(notifyPrefs)); } catch (e) {}
+  }
+
+  // ── Backends ──
+  function nativeNotify() {
+    var C = window.Capacitor;
+    if (!C || !C.Plugins || !C.Plugins.LocalNotifications) return null;
+    if (typeof C.isNativePlatform === "function" && !C.isNativePlatform()) return null;
+    return C.Plugins.LocalNotifications;
+  }
+  // iPhone/iPad on the web: the page is frozen the instant you leave, so anything
+  // meant to fire "later" has to be sent on the way out instead.
+  function iosWebLike() {
+    if (nativeNotify()) return false;
+    var ua = navigator.userAgent || "";
+    return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  }
+  function notifySupported() {
+    return !!nativeNotify() || (("Notification" in window) && "serviceWorker" in navigator);
+  }
+  function notifyHidden() { return notifyAway || document.hidden; }
+
+  if ("serviceWorker" in navigator) {
+    try {
+      navigator.serviceWorker.ready.then(function (r) { swReg = r; }).catch(function () {});
+    } catch (e) {}
+  }
+
+  function checkNotifyPermission(cb) {
+    var N = nativeNotify();
+    if (N) {
+      try {
+        Promise.resolve(N.checkPermissions()).then(function (r) {
+          notifyPerm = !!r && r.display === "granted";
+          cb(notifyPerm);
+        }).catch(function () { notifyPerm = false; cb(false); });
+      } catch (e) { notifyPerm = false; cb(false); }
+      return;
+    }
+    notifyPerm = ("Notification" in window) && Notification.permission === "granted";
+    cb(notifyPerm);
+  }
+  function requestNotifyPermission(cb) {
+    var done = false;
+    function finish(granted) {
+      if (done) return;
+      done = true;
+      notifyPerm = !!granted;
+      cb(notifyPerm);
+    }
+    var N = nativeNotify();
+    if (N) {
+      try {
+        Promise.resolve(N.requestPermissions()).then(function (r) {
+          finish(!!r && r.display === "granted");
+        }).catch(function () { finish(false); });
+      } catch (e) { finish(false); }
+      return;
+    }
+    if (!("Notification" in window)) { finish(false); return; }
+    try {
+      // Safari only has the callback form; everywhere else returns a promise.
+      var res = Notification.requestPermission(function (p) { finish(p === "granted"); });
+      if (res && typeof res.then === "function") res.then(function (p) { finish(p === "granted"); });
+    } catch (e) { finish(false); }
+  }
+
+  function webShow(n) {
+    var opts = {
+      body: n.body,
+      tag: n.key || ("wft-" + n.id),
+      icon: "icon-192.png",
+      badge: "icon-192.png"
+    };
+    if (swReg) { try { swReg.showNotification(n.title, opts); } catch (e) {} return; }
+    if (!("serviceWorker" in navigator)) return;
+    try {
+      navigator.serviceWorker.ready.then(function (r) {
+        swReg = r;
+        r.showNotification(n.title, opts);
+      }).catch(function () {});
+    } catch (e) {}
+  }
+
+  // One batched cancel-then-schedule. Per-id native calls race each other and can
+  // cancel something that was just scheduled — the whole plan goes in one pair of calls.
+  function applyNotifyPlan(plan) {
+    var now = Date.now();
+    var N = nativeNotify();
+    if (N) {
+      var toSchedule = plan.map(function (n) {
+        return {
+          id: n.id,
+          title: n.title,
+          body: n.body,
+          schedule: { at: new Date(Math.max(now + 1000, n.at)) }
+        };
+      });
+      var cancels = NOTIFY_ALL_IDS.map(function (i) { return { id: i }; });
+      try {
+        Promise.resolve(N.cancel({ notifications: cancels })).catch(function () {}).then(function () {
+          if (!toSchedule.length) return null;
+          return N.schedule({ notifications: toSchedule });
+        }).catch(function () {});
+      } catch (e) {}
+      return;
+    }
+    sweepWebPlan();   // fire anything in the outgoing plan that came due, so a
+    webPlan = plan;   // replan can't quietly drop an alert a sweep hadn't reached yet
+    sweepWebPlan();
+  }
+  function sweepWebPlan() {
+    if (!notifyPrefs.on || !notifyPerm) return;
+    var now = Date.now();
+    webPlan.forEach(function (n) {
+      if (n.at > now + 500) return;
+      var k = n.key || (n.id + ":" + n.at);
+      if (webSent[k]) return;
+      webSent[k] = true;
+      if (n.once) {
+        var parts = n.once.split(":");
+        notifyPrefs[parts[0]] = parts.slice(1).join(":");
+        saveNotifyPrefs();
+      }
+      webShow(n);
+    });
+  }
+
+  // ── Planning ──
+  function clampMinutes(m) {
+    m = Math.round(Number(m));
+    if (!isFinite(m)) m = 0;
+    return Math.min(24 * 60 - 1, Math.max(0, m));
+  }
+  function quietWindow() {
+    var from = clampMinutes(notifyPrefs.from), to = clampMinutes(notifyPrefs.to);
+    if (to <= from) to = Math.min(24 * 60 - 1, from + 60); // never an empty window
+    return { from: from, to: to };
+  }
+  function dayWindow(dayOffset) {
+    var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + dayOffset);
+    var w = quietWindow();
+    return { start: d.getTime() + w.from * 60000, end: d.getTime() + w.to * 60000, key: dayKeyOf(d) };
+  }
+  // A random moment inside that day's window, remembered so it doesn't jump around
+  // every time the schedule is rebuilt.
+  function pickForDay(dayOffset) {
+    var r = dayWindow(dayOffset);
+    var at = notifyPrefs.picks[r.key];
+    if (typeof at !== "number" || at < r.start || at > r.end) {
+      at = r.start + Math.floor(Math.random() * Math.max(1, r.end - r.start));
+      notifyPrefs.picks[r.key] = at;
+      prunePicks();
+      saveNotifyPrefs();
+    }
+    return { at: at, key: r.key };
+  }
+  function prunePicks() {
+    var cutoff = dayKeyOf(new Date(Date.now() - 3 * 86400000)); // keys sort lexicographically
+    Object.keys(notifyPrefs.picks).forEach(function (k) {
+      if (k < cutoff) delete notifyPrefs.picks[k];
+    });
+  }
+
+  // Every goal that's still short, so the reminder can be ONE notification listing
+  // them all rather than one per goal.
+  function outstandingGoals() {
+    var daily = [], weekly = [], anyDaily = false;
+    state.objectives.forEach(function (o) {
+      var dg = dailyGoalOf(o);
+      if (dg > 0) {
+        anyDaily = true;
+        if (liveDaySpent(o) < dg) daily.push({ name: o.name, left: dg - liveDaySpent(o) });
+      }
+      if (o.cadence !== "daily" && o.goalSeconds > 0 && liveSpent(o) < o.goalSeconds) {
+        weekly.push({ name: o.name, left: o.goalSeconds - liveSpent(o) });
+      }
+    });
+    // Daily targets are the point of the reminder; fall back to the week's goals when
+    // nothing has a daily target at all, so it isn't silent for those setups.
+    return anyDaily ? daily : weekly;
+  }
+  function goalListBody(list) {
+    return list.map(function (g) {
+      // Round up — a goal with 40 seconds left must not read "0m left".
+      return g.name + " — " + fmtShort(Math.max(60, g.left)) + " left";
+    }).join("\n");
+  }
+
+  function planDailyReminder(plan) {
+    if (!notifyPrefs.daily) return;
+    var now = Date.now();
+    for (var i = 0; i < NOTIFY_DAYS; i++) {
+      var p = pickForDay(i);
+      if (p.at <= now) continue;             // that moment has already passed
+      var body, title;
+      if (i === 0) {
+        if (notifyPrefs.sentDay === p.key) continue;
+        var list = outstandingGoals();
+        if (!list.length) continue;          // nothing outstanding — stay quiet
+        title = list.length > 1 ? "Goals still open today" : "Goal still open today";
+        body = goalListBody(list);
+      } else {
+        // There's no way to know now what will still be outstanding then; opening the
+        // app that day rewrites this with the real list.
+        title = "Today's goals are waiting";
+        body = "There's still room for a focused block today.";
+      }
+      plan.push({
+        id: NOTIFY_IDS.dailyBase + i,
+        key: "day:" + p.key,
+        title: title,
+        body: body,
+        at: p.at,
+        once: i === 0 ? ("sentDay:" + p.key) : null
+      });
+    }
+  }
+
+  // A different day and time each week, drawn from the days that are still ahead.
+  function pickWeekMoment() {
+    var now = Date.now();
+    var mon = mondayOf(new Date());
+    var w = quietWindow();
+    var choices = [];
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(mon); d.setDate(d.getDate() + i);
+      var start = Math.max(d.getTime() + w.from * 60000, now + 60000);
+      var end = d.getTime() + w.to * 60000;
+      if (end <= start) continue;
+      choices.push({ start: start, end: end });
+    }
+    if (!choices.length) return null;
+    var c = choices[Math.floor(Math.random() * choices.length)];
+    return c.start + Math.floor(Math.random() * Math.max(1, c.end - c.start));
+  }
+  function planWeeklyNudge(plan) {
+    if (!notifyPrefs.weekly) return;
+    var wk = weekKey(new Date());
+    if (notifyPrefs.sentWeek === wk) return;
+    var wp = notifyPrefs.weekPick;
+    if (!wp || wp.week !== wk || typeof wp.at !== "number") {
+      var at = pickWeekMoment();
+      if (at === null) return;               // the week's window is spent
+      wp = { week: wk, at: at };
+      notifyPrefs.weekPick = wp;
+      saveNotifyPrefs();
+    }
+    if (wp.at <= Date.now()) return;
+    var q = pick(QUOTES);
+    plan.push({
+      id: NOTIFY_IDS.weekly,
+      key: "week:" + wk,
+      title: "Keep the week moving",
+      body: q.a ? "“" + q.t + "” — " + q.a : q.t,
+      at: wp.at,
+      once: "sentWeek:" + wk
+    });
+  }
+
+  // Only planned while the app is in the background, so coming back clears it.
+  function planRunningReminder(plan) {
+    if (!notifyPrefs.running || !notifyHidden()) return;
+    if (state.pomodoro) return;   // a pomodoro pauses itself — that isn't "forgot to pause"
+    var running = null;
+    state.objectives.forEach(function (o) { if (o.running && o.startedAt) running = o; });
+    if (!running) return;
+    var immediate = iosWebLike();
+    if (immediate) {
+      // Nothing can fire later on iOS web, so send it on the way out — but only once
+      // per timer run, or deliberately tracking time in another app would ping on
+      // every single app switch.
+      if (notifyPrefs.pingedRun === running.startedAt) return;
+      notifyPrefs.pingedRun = running.startedAt;
+      saveNotifyPrefs();
+    }
+    plan.push({
+      id: NOTIFY_IDS.running,
+      key: "run:" + running.startedAt,
+      title: "Timer still running",
+      body: running.name + " is still being tracked. Pause it if you've stopped.",
+      at: immediate ? Date.now() : Date.now() + RUN_GRACE_MS
+    });
+  }
+
+  // Away alerts, also background-only: no point announcing something you're watching happen.
+  function planEventAlerts(plan) {
+    if (!notifyPrefs.events || !notifyHidden()) return;
+    var now = Date.now();
+    var p = state.pomodoro;
+    if (p && p.phaseEndsAt > now) {
+      plan.push({
+        id: NOTIFY_IDS.pomo,
+        key: "pomo:" + p.phaseEndsAt,
+        title: p.phase === "focus" ? "Break time" : "Back to focus",
+        body: p.phase === "focus"
+          ? "That focus block is done — take your break."
+          : "Break's over. The next focus block starts now.",
+        at: p.phaseEndsAt
+      });
+    }
+    state.objectives.forEach(function (o) {
+      if (!o.running || !o.startedAt) return;
+      var dg = dailyGoalOf(o);
+      var dSpent = liveDaySpent(o);
+      if (dg > 0 && dSpent < dg) {
+        plan.push({
+          id: NOTIFY_IDS.goalDaily, key: "gd:" + o.id + ":" + o.startedAt,
+          title: "Daily goal reached", body: o.name + " — " + fmtShort(dg) + " done today.",
+          at: now + (dg - dSpent) * 1000
+        });
+      }
+      if (o.cadence !== "daily" && o.goalSeconds > 0 && liveSpent(o) < o.goalSeconds) {
+        plan.push({
+          id: NOTIFY_IDS.goalWeekly, key: "gw:" + o.id + ":" + o.startedAt,
+          title: "Weekly goal reached", body: o.name + " — " + fmtShort(o.goalSeconds) + " done this week.",
+          at: now + (o.goalSeconds - liveSpent(o)) * 1000
+        });
+      }
+      if (o.totalGoalSeconds > 0 && liveTotalSpent(o) < o.totalGoalSeconds) {
+        plan.push({
+          id: NOTIFY_IDS.goalTotal, key: "gt:" + o.id + ":" + o.startedAt,
+          title: "Task complete", body: o.name + " — the whole " + fmtShort(o.totalGoalSeconds) + " is done.",
+          at: now + (o.totalGoalSeconds - liveTotalSpent(o)) * 1000
+        });
+      }
+    });
+  }
+
+  // Rebuild the ENTIRE schedule from state and apply it in one batch. Cheap enough to
+  // run on every save, and it means there's no incremental bookkeeping to get wrong.
+  function refreshNotifications() {
+    if (!notifyReady) return;
+    if (!notifyPrefs.on || !notifyPerm) { applyNotifyPlan([]); return; }
+    var plan = [];
+    planDailyReminder(plan);
+    planWeeklyNudge(plan);
+    planRunningReminder(plan);
+    planEventAlerts(plan);
+    applyNotifyPlan(plan);
+  }
+  function scheduleNotifyRefresh() {
+    if (!notifyReady) return;
+    if (notifyTimer) clearTimeout(notifyTimer);
+    notifyTimer = setTimeout(function () { notifyTimer = null; refreshNotifications(); }, 500);
+  }
+  // On the way out the page may freeze immediately, so this one runs synchronously.
+  function refreshNotificationsNow() {
+    if (notifyTimer) { clearTimeout(notifyTimer); notifyTimer = null; }
+    refreshNotifications();
+  }
+
+  // ── Notification settings UI ──
+  var notifyToggle = document.getElementById("notify-toggle");
+  var notifyDetails = document.getElementById("notify-details");
+  var notifyError = document.getElementById("notify-error");
+  var notifyFrom = document.getElementById("notify-from");
+  var notifyTo = document.getElementById("notify-to");
+  var NOTIFY_SWITCHES = [["notify-daily", "daily"], ["notify-weekly", "weekly"],
+                         ["notify-running", "running"], ["notify-events", "events"]];
+
+  function minutesToTime(m) {
+    m = clampMinutes(m);
+    return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+  }
+  function timeToMinutes(v) {
+    var parts = String(v || "").split(":");
+    if (parts.length < 2) return null;
+    var m = (+parts[0]) * 60 + (+parts[1]);
+    return isFinite(m) ? clampMinutes(m) : null;
+  }
+  // State the real delivery honestly — it differs a lot per platform.
+  function notifySupportLine() {
+    if (nativeNotify()) {
+      return "This is the sideloaded app, so reminders arrive even when it's fully closed.";
+    }
+    if (!notifySupported()) {
+      return "This browser can't show notifications. On iPhone, add the app to your Home Screen (iOS 16.4+) — a plain Safari tab has no notifications at all.";
+    }
+    if (iosWebLike()) {
+      return "On iPhone this works only when the app is on your Home Screen, and iOS freezes it the moment you leave: reminders fire while it's open, \"timer still running\" is sent as you leave instead, and goal or Pomodoro alerts can't reach you while you're out. The sideloaded .ipa gets all of them.";
+    }
+    return "In a browser, reminders fire only while this tab is open, and up to about a minute late while it's in the background. The sideloaded .ipa gets them with the app closed.";
+  }
+  function renderNotifySettings() {
+    var on = !!notifyPrefs.on;
+    notifyToggle.classList.toggle("on", on);
+    notifyToggle.setAttribute("aria-checked", on ? "true" : "false");
+    notifyDetails.hidden = !on;
+    NOTIFY_SWITCHES.forEach(function (pair) {
+      var btn = document.getElementById(pair[0]);
+      var val = !!notifyPrefs[pair[1]];
+      btn.classList.toggle("on", val);
+      btn.setAttribute("aria-checked", val ? "true" : "false");
+    });
+    notifyFrom.value = minutesToTime(notifyPrefs.from);
+    notifyTo.value = minutesToTime(notifyPrefs.to);
+    document.getElementById("notify-support").textContent = notifySupportLine();
+  }
+
+  notifyToggle.addEventListener("click", function () {
+    notifyError.hidden = true;
+    if (notifyPrefs.on) {
+      notifyPrefs.on = false;
+      saveNotifyPrefs();
+      renderNotifySettings();
+      refreshNotifications();   // clears everything pending
+      return;
+    }
+    if (!notifySupported()) {
+      notifyError.textContent = iosWebLike()
+        ? "Add this app to your Home Screen first — Safari tabs can't show notifications."
+        : "This browser doesn't support notifications.";
+      notifyError.hidden = false;
+      return;
+    }
+    requestNotifyPermission(function (granted) {
+      if (!granted) {
+        notifyError.textContent = "Notifications are blocked for this app. Allow them in your device settings, then try again.";
+        notifyError.hidden = false;
+        renderNotifySettings();
+        return;
+      }
+      notifyPrefs.on = true;
+      saveNotifyPrefs();
+      renderNotifySettings();
+      refreshNotifications();
+    });
+  });
+  NOTIFY_SWITCHES.forEach(function (pair) {
+    document.getElementById(pair[0]).addEventListener("click", function () {
+      notifyPrefs[pair[1]] = !notifyPrefs[pair[1]];
+      saveNotifyPrefs();
+      renderNotifySettings();
+      refreshNotifications();
+    });
+  });
+  function onWindowChange() {
+    var f = timeToMinutes(notifyFrom.value), t = timeToMinutes(notifyTo.value);
+    if (f === null || t === null) return;
+    notifyPrefs.from = f;
+    notifyPrefs.to = t;
+    notifyPrefs.picks = {};        // the old random moments may sit outside the new window
+    notifyPrefs.weekPick = null;
+    saveNotifyPrefs();
+    refreshNotifications();
+  }
+  notifyFrom.addEventListener("change", onWindowChange);
+  notifyTo.addEventListener("change", onWindowChange);
+
+  function initNotifications() {
+    notifyReady = true;
+    if (!nativeNotify()) setInterval(sweepWebPlan, WEB_SWEEP_MS);
+    checkNotifyPermission(function (granted) {
+      // Permission can be revoked in device settings while the pref stays on.
+      if (notifyPrefs.on && !granted) { notifyPrefs.on = false; saveNotifyPrefs(); }
+      renderNotifySettings();
+      refreshNotifications();
     });
   }
 
@@ -3714,6 +4285,7 @@
   updateStreak();
   maybeOnboard();
   updateSyncUI();
+  initNotifications();
 
   // Reconcile with the server BEFORE rolling over, snapshotting, or pushing. A freshly
   // opened (possibly stale) device must adopt newer remote data first — otherwise its
@@ -3737,10 +4309,22 @@
 
   setInterval(function () { if (!document.hidden) pullRemote(); }, 45000);
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) {
-      // Pull first, then roll over on the reconciled state (same reason as boot).
-      pullRemote(function () { checkRollover(); checkDailyRollover(); render(); });
+    if (document.hidden) {
+      // Synchronously: iOS can freeze the page the moment this returns, and the
+      // away-only reminders are planned from exactly this transition.
+      notifyAway = true;
+      refreshNotificationsNow();
+      return;
     }
+    notifyAway = false;
+    // Pull first, then roll over on the reconciled state (same reason as boot).
+    pullRemote(function () { checkRollover(); checkDailyRollover(); render(); });
+    refreshNotifications(); // back in the app — drops the away-only reminders
+  });
+  // Belt and braces for iOS home-screen apps, where pagehide is the more reliable exit.
+  window.addEventListener("pagehide", function () {
+    notifyAway = true;
+    refreshNotificationsNow();
   });
 })();
 </script>

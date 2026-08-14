@@ -1,5 +1,5 @@
 // Weekly Focus Timer — offline service worker
-const CACHE = "wft-v9";
+const CACHE = "wft-v10";
 const ASSETS = [
   "./",
   "./index.html",
@@ -23,6 +23,19 @@ self.addEventListener("activate", function (event) {
       return Promise.all(keys.filter(function (k) { return k !== CACHE; })
         .map(function (k) { return caches.delete(k); }));
     }).then(function () { return self.clients.claim(); })
+  );
+});
+
+// Tapping a notification focuses the app if it's already open, else launches it.
+self.addEventListener("notificationclick", function (event) {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (list) {
+      for (var i = 0; i < list.length; i++) {
+        if ("focus" in list[i]) return list[i].focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow("./");
+    })
   );
 });
 
