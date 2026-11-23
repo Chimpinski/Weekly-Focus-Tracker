@@ -106,9 +106,9 @@ No Playwright/Puppeteer browsers are installed, but `npm i puppeteer-core` in a 
 ## Building the unsigned IPA (exact)
 **You cannot build on Windows** — it's macOS/Xcode only. It's done entirely in CI:
 
-- Workflow: `.github/workflows/build-ipa.yml`, runs on **`macos-14`**.
+- Workflow: `.github/workflows/build-ipa.yml`, runs on **`macos-15`** (v1.7.0: `macos-14` was retired by GitHub — a job on a retired image is *cancelled* within seconds with no steps; the reason is only in the check-run annotation "configuration … is not supported").
 - **Triggers:** pushing a tag matching `v*`, or manual `workflow_dispatch`.
-- **Steps:** checkout → setup Node 20 → assemble web assets into `www/` (`cp index.html manifest.webmanifest sw.js icon-192.png icon-512.png apple-touch-icon.png www/`) → `npm install` → `npx cap add ios` → `npx capacitor-assets generate --ios` (icons from `assets/icon.png`) → `npx cap sync ios` → **unsigned** `xcodebuild` → package → upload artifact → build release notes from CHANGELOG → attach to GitHub Release.
+- **Steps:** checkout → setup Node 22 → assemble web assets into `www/` (`cp index.html manifest.webmanifest sw.js icon-192.png icon-512.png apple-touch-icon.png www/`) → `npm install` → `npx cap add ios` → `npx capacitor-assets generate --ios` (icons from `assets/icon.png`) → `npx cap sync ios` → **unsigned** `xcodebuild` → package → upload artifact → build release notes from CHANGELOG → attach to GitHub Release.
 - **Unsigned build config** (the crucial part): `xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release -sdk iphoneos ... MARKETING_VERSION="$MV" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""`. No certs, no provisioning profile. `MV` = tag minus the `v`. The `.ipa` is made by zipping `Payload/App.app`. You sign it at install time with Signulous/AltStore/Sideloadly.
 - Output asset: `WeeklyFocusTimer-unsigned.ipa` (bundle id `com.chimpinski.weeklyfocus`, min iOS 13).
 - **CI YAML gotcha we hit:** a bash heredoc with a column-0 `EOF` inside a `run: |` block breaks YAML (the unindented lines end the literal scalar; `---` reads as a doc separator → "startup_failure" with 0 jobs). Use an **indented `printf` block** instead. If a build shows 0 jobs / the run's name is the raw filename, it's a YAML parse error.
