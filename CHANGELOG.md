@@ -12,6 +12,28 @@ project uses [semantic versioning](https://semver.org/).
 
 _Nothing yet._
 
+## [1.7.0] - 2026-11-22
+
+### Added
+- **Pomodoro blocks wait for you.** When a focus or break block runs out you still get the same BREAK / FOCUS beeps and glowing word, but the next block no longer starts on its own. The card switches to **Focus block finished** (or **Break finished**) and the clock keeps counting up past the block length in **amber**, e.g. 30:00 → 30:01, along with a "+0:00:12 extra" line. Tap **Take a break** or **Focus** when you're ready, or **End session**. Extra focus time still counts toward your goal.
+- **Session summary.** Ending a Pomodoro session, or finishing its total focus time, shows the session's total time, focus time, break time, and the percentage spent in focus.
+- **Day-by-day breakdown in Progress.** Tap any day in the month grid to see that day's total and how much went to each goal: time against the daily target when the goal has one, otherwise its share of the day. Arrows step from day to day. The shading stays the same.
+- **Stats › By day.** The stats chart now has a **By week / By day** toggle. By day shows a week's seven days side by side and opens the breakdown for whichever day you tap. Tapping a week bar in By week opens that week day by day.
+
+### Changed
+- **Skip weekends still counts weekend work.** With *skip weekends* on, an untracked Saturday or Sunday still doesn't break your streak, and a weekend day with 15+ minutes now adds to it.
+- **Copying a sync code** copies only the part after `WFT-`, since every code box already shows that prefix. Pasting a full `WFT-…` code into the box also works now. It used to cut off the last three characters.
+- Pomodoro's **End focus** button is now **End session**.
+
+### Fixed
+- **Full-screen timers could run off the edge** of the card on some phones, especially in Pomodoro. Full-screen sizes now scale to the card's actual width and the screen's height, so the clock fits portrait, landscape, tablets, and split-screen windows, and the buttons stay on screen in landscape.
+- On narrow phones, a goal with a **total-time panel** squeezed its timer past the card edge. The panel now sits under the timer on small screens.
+- **Selecting text in a dialog and releasing the mouse outside it** (e.g. drag-selecting a Pomodoro minutes field) no longer closes the dialog. Clicking the dimmed background still does.
+- If a Pomodoro's total focus time ran out while the app was in the background, the session now ends at the moment the total was reached instead of crediting the extra time.
+
+### Notes
+Per-goal time for each day is recorded from this version onward. Days before it still show their total, under "Earlier time (not split by goal)".
+
 ## [1.6.0] - 2026-08-14
 
 ### Added
@@ -132,7 +154,8 @@ On iPhone the web app must be **added to the Home Screen** (iOS 16.4+) to have n
 - Installable PWA (web manifest, app icons, offline service worker).
 - An unsigned `.ipa` attached to the release for personal sideloading.
 
-[Unreleased]: https://github.com/Chimpinski/Weekly-Focus-Tracker/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/Chimpinski/Weekly-Focus-Tracker/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.7.0
 [1.6.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.6.0
 [1.5.1]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.5.1
 [1.5.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.5.0

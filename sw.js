@@ -1,5 +1,5 @@
 // Weekly Focus Timer — offline service worker
-const CACHE = "wft-v10";
+const CACHE = "wft-v11";
 const ASSETS = [
   "./",
   "./index.html",

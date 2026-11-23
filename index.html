@@ -41,6 +41,7 @@
     --track: #e0e8e6;
     --line: #dde5e3;
     --done: #2e7d32;
+    --over: #b45309;
     --danger: #b4552d;
     --shadow: 0 1px 3px rgba(26, 36, 34, 0.08), 0 4px 16px rgba(26, 36, 34, 0.05);
     --running-glow: 0 0 0 2px var(--accent), 0 4px 20px rgba(14, 124, 111, 0.25);
@@ -59,6 +60,7 @@
       --track: #2a3634;
       --line: #2a3634;
       --done: #66bb6a;
+      --over: #f5a524;
       --danger: #e0805a;
       --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.25);
       --running-glow: 0 0 0 2px var(--accent), 0 4px 20px rgba(63, 191, 169, 0.2);
@@ -77,6 +79,7 @@
     --track: #e0e8e6;
     --line: #dde5e3;
     --done: #2e7d32;
+    --over: #b45309;
     --danger: #b4552d;
     --shadow: 0 1px 3px rgba(26, 36, 34, 0.08), 0 4px 16px rgba(26, 36, 34, 0.05);
     --running-glow: 0 0 0 2px var(--accent), 0 4px 20px rgba(14, 124, 111, 0.25);
@@ -94,6 +97,7 @@
     --track: #2a3634;
     --line: #2a3634;
     --done: #66bb6a;
+    --over: #f5a524;
     --danger: #e0805a;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.25);
     --running-glow: 0 0 0 2px var(--accent), 0 4px 20px rgba(63, 191, 169, 0.2);
@@ -881,8 +885,9 @@
   .navbtn svg { width: 16px; height: 16px; }
 
   .prog-total { display: flex; align-items: baseline; justify-content: space-between; margin: 10px 0 6px; }
-  .prog-total .big { font-size: 30px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
-  .prog-total .sub { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .prog-total .big { font-size: 30px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .prog-total .sub { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; margin-left: auto; }
+  .prog-total { flex-wrap: wrap; column-gap: 12px; }
   .prog-goal-list { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
   .prog-goal { display: flex; flex-direction: column; gap: 5px; }
   .prog-goal .gr { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
@@ -890,7 +895,7 @@
   .prog-goal .gpct { color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
   .prog-empty { color: var(--muted); font-size: 14px; text-align: center; padding: 16px 0; }
 
-  .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
+  .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; padding: 0 3px; }
   .month-grid .wd { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; color: var(--faint); text-align: center; text-transform: uppercase; }
   .mrow { display: contents; }
   .mcell {
@@ -902,6 +907,13 @@
     font-size: 9px; color: var(--faint);
     font-variant-numeric: tabular-nums;
   }
+  button.mcell {
+    border: none; margin: 0; width: 100%; min-width: 0; font: inherit; font-size: 9px; line-height: 1.2;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  button.mcell:hover { filter: brightness(1.08); }
+  .mcell.today { outline: 1.5px solid var(--accent); }
+  .mcell.sel { outline: 2.5px solid var(--ink); outline-offset: 1px; font-weight: 700; }
   .mcell.empty { background: transparent; }
   .mcell.lvl-1 { background: rgba(63, 191, 169, 0.25); }
   .mcell.lvl-2 { background: rgba(63, 191, 169, 0.45); }
@@ -919,12 +931,41 @@
   .grid-legend { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 10px; font-size: 11px; color: var(--faint); }
   .grid-legend .sw { width: 12px; height: 12px; border-radius: 3px; }
 
+  /* Day breakdown (month-grid square or stats day bar) */
+  .day-hint { font-size: 12px; color: var(--faint); margin: 0 0 8px; }
+  .day-detail { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--surface-2); }
+  .day-detail .prog-total .big { font-size: 26px; }
+  .day-detail .bar { background: var(--surface); }
+  .bar > i.share { background: var(--accent); opacity: 0.55; }
+  .prog-goal.muted .gname { color: var(--muted); font-weight: 500; font-style: italic; }
+  .day-note { font-size: 11px; color: var(--faint); margin: 10px 0 0; line-height: 1.4; }
+
+  /* Segmented control (stats: by week / by day) */
+  .seg { display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: var(--surface-2); margin: 6px 0 14px; }
+  .seg-btn {
+    flex: 1; border: none; border-radius: 8px; padding: 7px 10px; background: transparent;
+    font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer;
+  }
+  .seg-btn.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+
   /* Stats */
   .stat-bars { display: flex; align-items: flex-end; gap: 8px; height: 150px; margin-top: 8px; padding-top: 10px; }
   .stat-bar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
   .stat-bar .col { width: 70%; max-width: 34px; background: var(--accent); border-radius: 5px 5px 0 0; min-height: 3px; transition: height 0.3s ease; }
   .stat-bar .col.dim { background: var(--track); }
-  .stat-bar .cap { font-size: 10px; color: var(--faint); }
+  .stat-bar .cap { font-size: 10px; color: var(--faint); text-align: center; line-height: 1.25; }
+  .stat-bar .cap-top { display: block; font-weight: 700; letter-spacing: 0.02em; }
+  button.stat-bar {
+    border: none; background: transparent; padding: 0; margin: 0; font: inherit; color: inherit; min-width: 0;
+    cursor: pointer; border-radius: 8px; -webkit-tap-highlight-color: transparent;
+  }
+  button.stat-bar:hover .col { filter: brightness(1.1); }
+  .stat-bar.sel .col { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
+  .stat-bar.sel .cap { color: var(--ink); }
+  .stat-bars.days { height: 170px; }
+  .stat-bar { min-width: 0; }
+  .stat-bar .val { text-align: center; line-height: 1.15; overflow-wrap: anywhere; }
+  @media (max-width: 420px) { .stat-bars { gap: 4px; } .stat-bar .val { font-size: 9px; } }
   .stat-bar .val { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .stat-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
   .stat-table th, .stat-table td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
@@ -942,6 +983,28 @@
     font-size: 44px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.05;
   }
   .card.pomo.on-break .pomo-main { color: var(--muted); }
+  /* Block finished, clock still running: amber marks the added time (focus or break). */
+  .pomo-phase.over { color: var(--over); }
+  .card.pomo.pomo-over { border-color: var(--over); }
+  .card.pomo.pomo-over.running { box-shadow: 0 0 0 2px var(--over), 0 4px 20px rgba(245, 165, 36, 0.22); border-color: transparent; }
+  .card.pomo.pomo-over .pomo-main,
+  .card.pomo.pomo-over.on-break .pomo-main { color: var(--over); }
+  .pomo-extra { margin: -4px 0 0; font-size: 13px; font-weight: 600; color: var(--over); font-variant-numeric: tabular-nums; }
+
+  /* End-of-session summary inside the celebration popup */
+  .session-sum { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
+  .sum-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .sum-cell {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 10px 4px; border-radius: 10px; background: var(--surface-2); min-width: 0;
+  }
+  .sum-val {
+    font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums; font-weight: 650; font-size: clamp(13px, 4.2vw, 17px);
+    color: var(--ink); white-space: nowrap;
+  }
+  .sum-lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+  .celebrate .sum-pct { font-size: 13px; color: var(--muted); }
   .pomo-total { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .pomo-total strong { color: var(--ink); font-weight: 600; }
   @keyframes cardFlash {
@@ -1003,38 +1066,71 @@
   .total-meta .total-left { font-size: 12px; font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; }
   .total-meta .total-of { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .total-meta .total-since { font-size: 10px; color: var(--faint); margin-top: 2px; }
+  /* Narrow phones: a side panel leaves the timer too little room, so stack it underneath. */
+  @media (max-width: 420px) {
+    .card-row { flex-direction: column; align-items: stretch; }
+    .total-panel { width: 100%; flex-direction: row; justify-content: center; gap: 14px; }
+    .total-meta { text-align: left; }
+  }
   .total-panel.done .total-left { color: var(--done); }
 
   /* ── Full-screen single-task view ── */
   .fs-btn svg { width: 15px; height: 15px; }
-  body.fs-mode { overflow: hidden; }
+  /* Every size here is bounded by the card's own width (cqi), with a viewport-based
+     fallback for older engines, and by the viewport height — so a big clock fits any
+     phone, tablet, or landscape window instead of spilling past the card's edge.
+     A monospace "0:30:00" is ~4.3em wide; 21cqi keeps it inside the card. */
+  body.fs-mode .card { container-type: inline-size; }
   body.fs-mode .wrap > header,
   body.fs-mode #summary,
   body.fs-mode footer { display: none; }
   body.fs-mode .fab { display: none; }
   body.fs-mode .wrap {
     padding-top: calc(16px + env(safe-area-inset-top));
-    min-height: 100vh; justify-content: center;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    min-height: 100vh; min-height: 100dvh; justify-content: center;
   }
-  body.fs-mode .cards { min-height: 82vh; justify-content: center; }
+  body.fs-mode .cards { min-height: 82vh; min-height: 82dvh; justify-content: center; }
   body.fs-mode .card {
-    min-height: 82vh; justify-content: center; gap: 22px; padding: 26px 20px;
+    min-height: 82vh; min-height: 82dvh; justify-content: center; gap: min(22px, 3vh); padding: 26px 20px;
+    min-width: 0; max-width: 100%;
   }
   body.fs-mode .card .icon-btns .btn-ghost { display: none; } /* hide Edit/Delete in full screen */
   body.fs-mode .card .top { justify-content: space-between; }
   body.fs-mode .card h2 { font-size: 22px; }
   body.fs-mode .card-row { flex-direction: column; align-items: stretch; gap: 22px; }
   body.fs-mode .readout { justify-content: center; }
-  body.fs-mode .card .remaining { font-size: clamp(52px, 17vw, 104px); }
-  body.fs-mode .card.goal-met .remaining { font-size: clamp(34px, 11vw, 60px); }
-  body.fs-mode .ring-wrap { width: min(320px, 74vw); height: min(320px, 74vw); }
-  body.fs-mode .ring-time { font-size: clamp(34px, 9vw, 54px); }
+  body.fs-mode .card .remaining { font-size: min(104px, calc((100vw - 100px) / 4.6), 17vh); font-size: min(104px, 20cqi, 17vh); }
+  body.fs-mode .card.goal-met .remaining { font-size: min(60px, calc((100vw - 100px) / 4.6), 11vh); font-size: min(60px, 20cqi, 11vh); }
+  body.fs-mode .ring-wrap { width: min(320px, 74vw, 46vh); height: min(320px, 74vw, 46vh); width: min(320px, 80cqi, 46vh); height: min(320px, 80cqi, 46vh); }
+  body.fs-mode .ring-time { font-size: min(54px, 9vw, 6.5vh); font-size: min(54px, 11cqi, 6.5vh); }
   body.fs-mode .ring-pct { font-size: 18px; }
-  body.fs-mode .pomo-main { font-size: clamp(60px, 22vw, 128px); }
+  body.fs-mode .pomo-main { font-size: min(128px, calc((100vw - 100px) / 4.6), 22vh); font-size: min(128px, 22cqi, 22vh); white-space: nowrap; }
+  body.fs-mode .card.pomo .pomo-phase,
+  body.fs-mode .card.pomo .pomo-main,
+  body.fs-mode .card.pomo .pomo-extra,
+  body.fs-mode .card.pomo .pomo-total,
+  body.fs-mode .card.pomo .spent-line { text-align: center; }
+  /* Short screens (phones in landscape, split-screen): tighten everything so the
+     controls stay on screen instead of below the fold. */
+  @media (max-height: 520px) {
+    body.fs-mode .wrap { padding-top: calc(8px + env(safe-area-inset-top)); padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+    body.fs-mode .card { padding: 12px 18px; gap: 6px; }
+    body.fs-mode .card h2 { font-size: 18px; }
+    body.fs-mode .card .goal-note { display: none; }
+    body.fs-mode .pomo-phase { font-size: 12px; }
+    body.fs-mode .pomo-main { font-size: min(128px, calc((100vw - 100px) / 4.6), 17vh); font-size: min(128px, 22cqi, 17vh); }
+    body.fs-mode .pomo-extra, body.fs-mode .pomo-total, body.fs-mode .card .spent-line { margin: 0; font-size: 12px; }
+    body.fs-mode .card-row { gap: 10px; }
+    body.fs-mode .card .actions .btn-primary,
+    body.fs-mode .card .actions .btn-pause,
+    body.fs-mode .card .actions .btn-secondary { padding: 9px 22px; font-size: 15px; }
+  }
   body.fs-mode .pomo-phase { font-size: 15px; }
   body.fs-mode .actions { justify-content: center; }
   body.fs-mode .btn-primary,
-  body.fs-mode .btn-pause { padding: 15px 30px; font-size: 17px; }
+  body.fs-mode .btn-pause,
+  body.fs-mode .card .actions .btn-secondary { padding: 15px 30px; font-size: 17px; }
   body.fs-mode .total-panel { width: 100%; max-width: 300px; margin: 0 auto; flex-direction: row; justify-content: center; gap: 16px; padding: 16px; }
   body.fs-mode .total-ring { width: 88px; height: 88px; }
   body.fs-mode .total-ring-pct { font-size: 20px; }
@@ -1049,7 +1145,8 @@
   }
   .announce-overlay[hidden] { display: none; }
   .announce-word {
-    font-size: clamp(44px, 15vw, 128px);
+    font-size: clamp(34px, 13vw, 128px);
+    max-width: 100%; overflow-wrap: anywhere;
     font-weight: 800; letter-spacing: 0.01em; text-align: center; text-wrap: balance;
     text-transform: uppercase; line-height: 1.05;
     color: var(--accent);
@@ -1299,6 +1396,7 @@
     </div>
     <h3 id="celebrate-title">Good job!</h3>
     <p id="celebrate-msg"></p>
+    <div class="session-sum" id="celebrate-sum" hidden></div>
     <button class="btn-primary" type="button" id="celebrate-ok">Nice!</button>
   </div>
 </div>
@@ -1481,14 +1579,25 @@
     if (!state.weekHistory || typeof state.weekHistory !== "object") state.weekHistory = {}; // mondayKey -> snapshot
     if (typeof state.excludeWeekends !== "boolean") state.excludeWeekends = false;
     if (typeof state.streakMilestone !== "number") state.streakMilestone = 0;
+    if (!state.dayGoals || typeof state.dayGoals !== "object") state.dayGoals = {};   // dayKey -> {objectiveId: secs | [secs, dailyGoalSecs]}
+    if (!state.goalNames || typeof state.goalNames !== "object") state.goalNames = {}; // objectiveId -> last known name (outlives deletion)
     if (typeof state.pomodoro === "undefined") state.pomodoro = null;
+    if (state.pomodoro) {
+      // Session bookkeeping added in v1.7.0 (blocks wait for you instead of auto-advancing).
+      var pm = state.pomodoro;
+      if (typeof pm.over !== "boolean") pm.over = false;
+      if (typeof pm.focusDone !== "number") pm.focusDone = 0;
+      if (typeof pm.breakDone !== "number") pm.breakDone = 0;
+      if (typeof pm.sessionStart !== "number") pm.sessionStart = pm.phaseStartedAt || Date.now();
+    }
     if (!Array.isArray(state.backups)) state.backups = [];              // rolling dated snapshots (ride along with sync)
     if (typeof state.lastDestructiveAt !== "number") state.lastDestructiveAt = 0; // ms of the last intentional data reduction
   }
 
   // ── Daily activity log (powers the streak, the month grid, and stats) ──
-  // Attribute an elapsed span to each calendar day it covers.
-  function recordDaily(startMs, endMs) {
+  // Attribute an elapsed span to each calendar day it covers (and, given the
+  // objective, to that objective's slice of the day for the per-day breakdown).
+  function recordDaily(startMs, endMs, o) {
     if (!(endMs > startMs)) return;
     if (!state.dailyLog) state.dailyLog = {};
     var cur = startMs;
@@ -1497,10 +1606,27 @@
       var segEnd = Math.min(endMs, midnight.getTime());
       var key = dayKeyOf(new Date(cur));
       state.dailyLog[key] = (state.dailyLog[key] || 0) + (segEnd - cur) / 1000;
+      if (o) addDayGoal(key, o, (segEnd - cur) / 1000);
       cur = segEnd;
     }
   }
   function dailyLogged(dayKey) { return (state.dailyLog && state.dailyLog[dayKey]) || 0; }
+
+  // Per-objective time for each day. Stored compactly because it rides along in the
+  // synced state: a bare number of seconds, or [seconds, dailyGoalSeconds] when the
+  // objective had a daily target that day.
+  function dayGoalSecs(entry) { return Array.isArray(entry) ? (entry[0] || 0) : (entry || 0); }
+  function dayGoalTarget(entry) { return Array.isArray(entry) ? (entry[1] || 0) : 0; }
+  function addDayGoal(dayKey, o, secs) {
+    if (!o || !o.id) return;
+    if (!state.dayGoals) state.dayGoals = {};
+    if (!state.goalNames) state.goalNames = {};
+    var day = state.dayGoals[dayKey] || (state.dayGoals[dayKey] = {});
+    var total = Math.max(0, Math.round(dayGoalSecs(day[o.id]) + secs));
+    var target = dailyGoalOf(o);
+    day[o.id] = target > 0 ? [total, target] : total;
+    state.goalNames[o.id] = o.name;
+  }
   // Committed time today plus the live portion of any running timer.
   function trackedTodaySeconds() {
     var s = dailyLogged(dayKeyOf(new Date()));
@@ -1607,7 +1733,13 @@
     return copy;
   }
   function makeSnap() {
-    return { ts: Date.now(), dayKey: dayKeyOf(new Date()), weight: dataWeight(state), data: snapshotOf(state) };
+    // The per-goal day breakdown is left out of these rolling copies: there are up to
+    // 14 of them inside the synced state, and it's append-only history that a restore
+    // keeps from the current state anyway (see restoreSnapshot).
+    var data = snapshotOf(state);
+    delete data.dayGoals;
+    delete data.goalNames;
+    return { ts: Date.now(), dayKey: dayKeyOf(new Date()), weight: dataWeight(state), data: data };
   }
   // Rolling dated snapshots kept inside state.backups (so they ride along with sync). One per day.
   function captureSnapshot(force) {
@@ -1668,7 +1800,7 @@
     // Commit any running time so history + the daily log are accurate.
     state.objectives.forEach(function (o) {
       if (o.running && o.startedAt) {
-        recordDaily(o.startedAt, now);
+        recordDaily(o.startedAt, now, o);
         o.spentSeconds += Math.max(0, (now - o.startedAt) / 1000);
         o.totalSpentSeconds = (o.totalSpentSeconds || 0) + Math.max(0, (now - o.startedAt) / 1000);
         o.daySpentSeconds = (o.daySpentSeconds || 0) + Math.max(0, (now - Math.max(o.startedAt, startOfTodayMs())) / 1000);
@@ -1768,10 +1900,12 @@
   }
 
   // ── Actions ──
-  function pauseObjective(o) {
+  // `endMs` (optional) stops the clock at an earlier moment, e.g. exactly when a
+  // pomodoro's total focus ran out while the app was in the background.
+  function pauseObjective(o, endMs) {
     if (!o.running) return;
-    var now = Date.now();
-    recordDaily(o.startedAt, now); // log the elapsed span to the daily activity log
+    var now = endMs ? Math.max(o.startedAt || 0, Math.min(Date.now(), endMs)) : Date.now();
+    recordDaily(o.startedAt, now, o); // log the elapsed span to the daily activity log
     var elapsed = Math.max(0, (now - o.startedAt) / 1000);
     o.spentSeconds += elapsed;
     o.totalSpentSeconds = (o.totalSpentSeconds || 0) + elapsed; // cumulative, survives weekly reset
@@ -1829,6 +1963,18 @@
     if (cls) n.className = cls;
     if (text != null) n.textContent = text;
     return n;
+  }
+  // Close a modal when its dimmed backdrop is clicked — but only when the press also
+  // started on the backdrop. Selecting text in a field and releasing the mouse outside
+  // the sheet fires a click on the backdrop too, and that shouldn't dismiss anything.
+  function onBackdropClick(node, close) {
+    var downOnBackdrop = false;
+    node.addEventListener("pointerdown", function (ev) { downOnBackdrop = ev.target === node; });
+    node.addEventListener("click", function (ev) {
+      var ok = downOnBackdrop && ev.target === node;
+      downOnBackdrop = false;
+      if (ok) close();
+    });
   }
 
   function playIcon() {
@@ -2036,6 +2182,7 @@
       o.dayKey = dayKeyOf(new Date());
       var dk = dayKeyOf(new Date());
       state.dailyLog[dk] = Math.max(0, (state.dailyLog[dk] || 0) + delta); // reflect in the activity log
+      addDayGoal(dk, o, delta); // and in that objective's slice of today
       if (sign < 0) markDestructive(); // subtracting time is an intentional reduction
       loggingId = null;
       save();
@@ -2574,12 +2721,32 @@
     var item = eventQueue.shift();
     var next = function () { eventBusy = false; setTimeout(runEvents, 200); };
     if (item.kind === "announce") {
-      showAnnouncement(item.text, { variant: item.variant }, next);
+      showAnnouncement(item.text, { variant: item.variant }, function () { if (item.after) item.after(); next(); });
     } else if (item.kind === "total") {
       showAnnouncement("Task complete", {}, function () { openTotalPopup(item.id, item.name, next); });
     } else {
       showPopup(item, next);
     }
+  }
+
+  var CLOCK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+  // Session totals for the end-of-pomodoro popup: total, focus, break, and % in focus.
+  function fillSessionSummary(host, s) {
+    host.innerHTML = "";
+    var pct = s.total > 0 ? Math.round((s.focus / s.total) * 100) : 0;
+    var grid = el("div", "sum-grid");
+    [["Total", s.total], ["Focus", s.focus], ["Break", s.brk]].forEach(function (row) {
+      var cell = el("div", "sum-cell");
+      cell.appendChild(el("span", "sum-val", fmtClock(row[1])));
+      cell.appendChild(el("span", "sum-lbl", row[0]));
+      grid.appendChild(cell);
+    });
+    host.appendChild(grid);
+    var bar = el("div", "bar sum-split");
+    var fill = el("i"); fill.style.width = pct + "%";
+    bar.appendChild(fill);
+    host.appendChild(bar);
+    host.appendChild(el("p", "sum-pct", pct + "% of the session spent in focus"));
   }
 
   var popupDone = null;
@@ -2588,6 +2755,10 @@
     var burst = document.getElementById("celebrate-burst");
     var title = document.getElementById("celebrate-title");
     var msg = document.getElementById("celebrate-msg");
+    var sum = document.getElementById("celebrate-sum");
+    document.getElementById("celebrate-ok").textContent = item.type === "pomoSummary" ? "Done" : "Nice!";
+    sum.hidden = !item.summary;
+    if (item.summary) fillSessionSummary(sum, item.summary);
     if (item.type === "streak") {
       burst.innerHTML = FLAME_SVG;
       title.textContent = item.days + "-day streak!";
@@ -2600,6 +2771,10 @@
       burst.innerHTML = CHECK_SVG;
       title.textContent = "Focus session complete";
       msg.textContent = item.name ? ("Great deep work on " + item.name + " — time to recharge.") : "Great deep work — time to recharge.";
+    } else if (item.type === "pomoSummary") {
+      burst.innerHTML = CLOCK_SVG;
+      title.textContent = "Session summary";
+      msg.textContent = item.name ? ("Here's how your session on " + item.name + " went.") : "Here's how your session went.";
     } else {
       burst.innerHTML = CHECK_SVG;
       title.textContent = pick(CELEBRATE_OPENERS);
@@ -2631,7 +2806,7 @@
     if (d) d();
   }
   document.getElementById("total-keep").addEventListener("click", closeTotalPopup);
-  document.getElementById("total-overlay").addEventListener("click", function (ev) { if (ev.target === this) closeTotalPopup(); });
+  onBackdropClick(document.getElementById("total-overlay"), closeTotalPopup);
   document.getElementById("total-clear").addEventListener("click", function () {
     var o = byId(totalPopupId);
     if (o) {
@@ -2704,7 +2879,7 @@
   document.getElementById("fab-add").addEventListener("click", openModal);
   document.getElementById("modal-close").addEventListener("click", closeModal);
   document.getElementById("btn-cancel-add").addEventListener("click", closeModal);
-  overlay.addEventListener("click", function (ev) { if (ev.target === overlay) closeModal(); });
+  onBackdropClick(overlay, closeModal);
   document.addEventListener("keydown", function (ev) {
     if (ev.key === "Escape" && !overlay.hidden) closeModal();
   });
@@ -2879,7 +3054,7 @@
   document.getElementById("settings-btn").addEventListener("click", openSettings);
   document.getElementById("settings-close").addEventListener("click", closeSettings);
   document.getElementById("settings-done").addEventListener("click", closeSettings);
-  settingsOverlay.addEventListener("click", function (ev) { if (ev.target === settingsOverlay) closeSettings(); });
+  onBackdropClick(settingsOverlay, closeSettings);
   settingsName.addEventListener("input", function () {
     var v = settingsName.value.trim();
     if (v) { state.userName = v; save(); setGreeting(); }
@@ -3259,16 +3434,28 @@
     if (!notifyPrefs.events || !notifyHidden()) return;
     var now = Date.now();
     var p = state.pomodoro;
-    if (p && p.phaseEndsAt > now) {
-      plan.push({
-        id: NOTIFY_IDS.pomo,
-        key: "pomo:" + p.phaseEndsAt,
-        title: p.phase === "focus" ? "Break time" : "Back to focus",
-        body: p.phase === "focus"
-          ? "That focus block is done — take your break."
-          : "Break's over. The next focus block starts now.",
-        at: p.phaseEndsAt
-      });
+    if (p) {
+      // Whichever comes first: the session's total focus running out, or the block ending.
+      // (Once a block is finished it waits in extra time, so there's nothing more to plan.)
+      var totalEnd = pomoTotalEndsAt(p);
+      if (totalEnd <= p.phaseEndsAt && totalEnd > now) {
+        plan.push({
+          id: NOTIFY_IDS.pomo, key: "pomo-done:" + Math.round(totalEnd),
+          title: "Focus session complete",
+          body: "You've used up your total focus time. Nice work.",
+          at: totalEnd
+        });
+      } else if (!p.over && p.phaseEndsAt > now) {
+        plan.push({
+          id: NOTIFY_IDS.pomo,
+          key: "pomo:" + p.phaseEndsAt,
+          title: p.phase === "focus" ? "Break time" : "Back to focus",
+          body: p.phase === "focus"
+            ? "That focus block is done. The clock keeps counting extra focus until you tap Take a break."
+            : "Break's over. Tap Focus when you're ready to start the next block.",
+          at: p.phaseEndsAt
+        });
+      }
     }
     state.objectives.forEach(function (o) {
       if (!o.running || !o.startedAt) return;
@@ -3478,7 +3665,10 @@
   // The "WFT-" prefix is shown as a static label, so the input holds only the
   // 12-character body. Auto-uppercase, strip junk, cap at 12, group with dashes.
   function formatCodeBody(v) {
-    var raw = (v || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
+    var raw = (v || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    // A pasted full code ("WFT-ABCD-…") would otherwise lose its last 3 characters.
+    if (raw.length > 12 && raw.indexOf("WFT") === 0) raw = raw.slice(3);
+    raw = raw.slice(0, 12);
     var parts = [];
     for (var i = 0; i < raw.length; i += 4) parts.push(raw.slice(i, i + 4));
     return parts.join("-");
@@ -3571,7 +3761,10 @@
     if (!data) return;
     var keep = Array.isArray(state.backups) ? state.backups.slice() : [];
     var cur = hasData(state) ? makeSnap() : null;
+    var keepDayGoals = state.dayGoals, keepGoalNames = state.goalNames;
     state = JSON.parse(JSON.stringify(data));
+    if (!state.dayGoals && keepDayGoals) state.dayGoals = keepDayGoals;   // rolling backups omit it
+    if (!state.goalNames && keepGoalNames) state.goalNames = keepGoalNames;
     migrate();
     state.backups = mergeBackups(state.backups, keep, cur);
     save(); // bumps updatedAt so the restore wins sync and re-seeds the server
@@ -3661,8 +3854,11 @@
     if (!code) return;
     var btn = this;
     function flash() { btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy"; }, 1400); }
+    // Copy only the part after "WFT-": every code field shows that prefix as a fixed
+    // label, so pasting the full code would put WFT into the 12-character box.
+    var body = canonicalCode(code).replace(/^WFT-/, "");
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(code).then(flash).catch(function () {});
+      navigator.clipboard.writeText(body).then(flash).catch(function () {});
     }
   });
   document.getElementById("sync-stop").addEventListener("click", function () {
@@ -3770,7 +3966,7 @@
   }
   function closeRestore() { restoreOverlay.hidden = true; restoreArmed = null; }
   document.getElementById("restore-close").addEventListener("click", closeRestore);
-  restoreOverlay.addEventListener("click", function (ev) { if (ev.target === this) closeRestore(); });
+  onBackdropClick(restoreOverlay, closeRestore);
   document.getElementById("settings-backups").addEventListener("click", function () { openRestore(null); });
   document.getElementById("restore-backup-now").addEventListener("click", function () {
     captureSnapshot(true); save(); renderRestoreList();
@@ -3805,7 +4001,11 @@
     var day = new Date(); day.setHours(0, 0, 0, 0);
     var count = 0, first = true, guard = 0;
     while (guard++ < 4000) {
-      if (ex && isWeekendDow(day.getDay())) { day.setDate(day.getDate() - 1); first = false; continue; }
+      if (ex && isWeekendDow(day.getDay())) {
+        // Skipped weekends never break a streak, but focusing on one still adds to it.
+        if (dayEarned(day, first)) count++;
+        day.setDate(day.getDate() - 1); first = false; continue;
+      }
       if (dayEarned(day, first)) count++;
       else if (!first) break; // a missed past weekday breaks the streak
       first = false;
@@ -3881,12 +4081,12 @@
   });
   function closeStreak() { document.getElementById("streak-overlay").hidden = true; }
   document.getElementById("streak-close").addEventListener("click", closeStreak);
-  document.getElementById("streak-overlay").addEventListener("click", function (ev) {
-    if (ev.target === this) closeStreak();
-  });
+  onBackdropClick(document.getElementById("streak-overlay"), closeStreak);
 
   // ══ Progress / history ══
   var progWeekKey = null, progMonth = null, progView = "overview";
+  var progDayKey = null;     // the day shown in the day breakdown (overview and stats)
+  var statMode = "weeks";    // stats chart: "weeks" (last 8 weeks) or "days" (one week, day by day)
 
   function weekRangeFromKey(mk) {
     var p = mk.split("-"); var d = new Date(+p[0], +p[1] - 1, +p[2]);
@@ -3913,6 +4113,109 @@
   function addDaysKey(mk, days) {
     var p = mk.split("-"); var d = new Date(+p[0], +p[1] - 1, +p[2]); d.setDate(d.getDate() + days);
     return weekKey(d);
+  }
+  function dateOfKey(dk) { var p = dk.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function shiftDayKey(dk, days) { var d = dateOfKey(dk); d.setDate(d.getDate() + days); return dayKeyOf(d); }
+  // Total tracked on a day; today includes the live part of a running timer.
+  function dayTotal(dk) { return dk === dayKeyOf(new Date()) ? trackedTodaySeconds() : dailyLogged(dk); }
+
+  // Everything tracked on one day: the total, and each objective's slice of it.
+  function dayDataFor(dk) {
+    var isToday = dk === dayKeyOf(new Date());
+    var rec = (state.dayGoals && state.dayGoals[dk]) || {};
+    var rows = {}, list = [];
+    function row(id) {
+      if (!rows[id]) {
+        var live = byId(id);
+        rows[id] = { name: live ? live.name : ((state.goalNames && state.goalNames[id]) || "Deleted goal"), secs: 0, target: 0 };
+        list.push(rows[id]);
+      }
+      return rows[id];
+    }
+    if (isToday) state.objectives.forEach(function (o) { row(o.id); }); // today lists every goal, even untouched ones
+    Object.keys(rec).forEach(function (id) {
+      var r = row(id); r.secs = dayGoalSecs(rec[id]); r.target = dayGoalTarget(rec[id]);
+    });
+    if (isToday) {
+      var start = startOfTodayMs(), now = Date.now();
+      state.objectives.forEach(function (o) {
+        var r = row(o.id);
+        if (o.running && o.startedAt) r.secs += Math.max(0, (now - Math.max(o.startedAt, start)) / 1000);
+        r.target = dailyGoalOf(o);
+      });
+    }
+    list.sort(function (a, b) { return b.secs - a.secs; });
+    var total = dayTotal(dk), split = 0;
+    list.forEach(function (r) { split += r.secs; });
+    // Time logged before per-goal tracking existed (v1.7.0) only has a day total.
+    return { total: total, goals: list, unsplit: Math.max(0, total - split), isToday: isToday };
+  }
+
+  // The day breakdown: total time plus each goal's share, like the week view but for one day.
+  function buildDayDetail(dk, onPick) {
+    var box = el("div", "day-detail");
+    var todayKey = dayKeyOf(new Date());
+    var nav = el("div", "prog-weeknav");
+    var prev = navButton("M15 18 9 12l6-6", function () { onPick(shiftDayKey(dk, -1)); });
+    var label = dateOfKey(dk).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    var lbl = el("div", "rng", label + (dk === todayKey ? " (today)" : ""));
+    var next = navButton("m9 18 6-6-6-6", function () { onPick(shiftDayKey(dk, 1)); });
+    if (dk >= todayKey) next.disabled = true;
+    nav.appendChild(prev); nav.appendChild(lbl); nav.appendChild(next);
+    box.appendChild(nav);
+
+    var data = dayDataFor(dk);
+    if (data.total < 1 && !data.goals.some(function (g) { return g.target > 0; })) {
+      box.appendChild(el("p", "prog-empty", "Nothing tracked on this day."));
+      return box;
+    }
+    var withTarget = data.goals.filter(function (g) { return g.target > 0; });
+    var met = withTarget.filter(function (g) { return g.secs >= g.target; }).length;
+    var tot = el("div", "prog-total");
+    tot.appendChild(el("span", "big", fmtShort(data.total)));
+    tot.appendChild(el("span", "sub", "focused" + (withTarget.length ? " · " + met + " of " + withTarget.length + " daily goal" + (withTarget.length === 1 ? "" : "s") + " met" : "")));
+    box.appendChild(tot);
+
+    var list = el("div", "prog-goal-list");
+    function addRow(name, secs, target, extraCls) {
+      var g = el("div", "prog-goal" + (extraCls ? " " + extraCls : ""));
+      var gr = el("div", "gr");
+      gr.appendChild(el("span", "gname", name));
+      var pct, txt;
+      if (target > 0) {
+        pct = Math.floor((secs / target) * 100);
+        txt = fmtShort(secs) + " / " + fmtShort(target) + " · " + pct + "%";
+      } else {
+        pct = data.total > 0 ? Math.round((secs / data.total) * 100) : 0;
+        txt = fmtShort(secs) + " · " + pct + "% of day";
+      }
+      gr.appendChild(el("span", "gpct", txt));
+      g.appendChild(gr);
+      var gb = el("div", "bar"); var gf = el("i");
+      gf.style.width = Math.min(100, pct) + "%";
+      if (target > 0 && pct >= 100) gf.classList.add("full");
+      if (!(target > 0)) gf.classList.add("share");
+      gb.appendChild(gf); g.appendChild(gb);
+      list.appendChild(g);
+    }
+    data.goals.forEach(function (r) {
+      if (r.secs < 1 && !(data.isToday)) return;
+      addRow(r.name, r.secs, r.target);
+    });
+    if (data.unsplit >= 60) addRow("Earlier time (not split by goal)", data.unsplit, 0, "muted");
+    box.appendChild(list);
+    if (data.unsplit >= 60) box.appendChild(el("p", "day-note", "Per-goal time is recorded from version 1.7.0 on; time logged before that only has a day total."));
+    return box;
+  }
+  // Select a day everywhere: the breakdown, its week, and its month.
+  function pickDay(dk) {
+    var todayKey = dayKeyOf(new Date());
+    if (dk > todayKey) dk = todayKey;
+    progDayKey = dk;
+    var d = dateOfKey(dk);
+    progWeekKey = weekKey(d);
+    progMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+    renderProgress();
   }
 
   function renderProgress() {
@@ -3979,6 +4282,13 @@
     legend.appendChild(document.createTextNode("More"));
     body.appendChild(legend);
 
+    // Day breakdown for the selected square
+    var dlab = el("p", "prog-section-label", "Day breakdown");
+    dlab.style.marginTop = "22px";
+    body.appendChild(dlab);
+    body.appendChild(el("p", "day-hint", "Tap a day in the calendar to see where its time went."));
+    body.appendChild(buildDayDetail(progDayKey, pickDay));
+
     var statBtn = el("button", "btn-secondary", "View stats");
     statBtn.type = "button"; statBtn.style.marginTop = "18px"; statBtn.style.width = "100%";
     statBtn.addEventListener("click", function () { progView = "stats"; renderProgress(); });
@@ -4030,9 +4340,18 @@
         if (!inMonth) { cell = el("div", "mcell empty"); }
         else {
           var dk = dayKeyOf(d);
-          var lv = d > new Date() ? 0 : levelFor(dailyLogged(dk));
-          cell = el("div", "mcell lvl-" + lv, String(d.getDate()));
-          if (dk === todayKey) cell.style.outline = "1.5px solid var(--accent)";
+          var future = dk > todayKey;
+          var lv = future ? 0 : levelFor(dayTotal(dk));
+          cell = el(future ? "div" : "button", "mcell lvl-" + lv, String(d.getDate()));
+          if (dk === todayKey) cell.classList.add("today");
+          if (dk === progDayKey) cell.classList.add("sel");
+          if (!future) {
+            cell.type = "button";
+            cell.setAttribute("aria-label", d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) + ", " + fmtShort(dayTotal(dk)));
+            (function (key) {
+              cell.addEventListener("click", function (ev) { ev.stopPropagation(); pickDay(key); });
+            })(dk);
+          }
         }
         band.appendChild(cell);
       }
@@ -4047,30 +4366,67 @@
     for (var i = n - 1; i >= 0; i--) {
       var wm = new Date(monday); wm.setDate(monday.getDate() - i * 7);
       var sum = 0;
-      for (var d = 0; d < 7; d++) { var day = new Date(wm); day.setDate(wm.getDate() + d); sum += dailyLogged(dayKeyOf(day)); }
+      for (var d = 0; d < 7; d++) { var day = new Date(wm); day.setDate(wm.getDate() + d); sum += dayTotal(dayKeyOf(day)); }
       arr.push({ monday: wm, seconds: sum });
     }
     return arr;
+  }
+  // One clickable column of a stats bar chart.
+  function statColumn(seconds, max, cap, opts) {
+    opts = opts || {};
+    var col = el(opts.onClick ? "button" : "div", "stat-bar" + (opts.onClick ? " pickable" : "") + (opts.selected ? " sel" : ""));
+    if (opts.onClick) { col.type = "button"; col.addEventListener("click", opts.onClick); }
+    if (opts.label) col.setAttribute("aria-label", opts.label);
+    var bar = el("div", "col" + (seconds <= 0 ? " dim" : ""));
+    bar.style.height = Math.max(2, Math.round((seconds / max) * 100)) + "%";
+    col.appendChild(el("div", "val", seconds > 0 ? fmtShort(seconds) : ""));
+    col.appendChild(bar);
+    var c = el("div", "cap");
+    if (Array.isArray(cap)) { c.appendChild(el("span", "cap-top", cap[0])); c.appendChild(document.createTextNode(cap[1])); }
+    else c.textContent = cap;
+    col.appendChild(c);
+    return col;
   }
   function renderStats(body) {
     var back = el("button", "btn-secondary", "‹ Back");
     back.type = "button"; back.style.marginBottom = "6px";
     back.addEventListener("click", function () { progView = "overview"; renderProgress(); });
     body.appendChild(back);
+
+    var seg = el("div", "seg");
+    seg.setAttribute("role", "tablist");
+    [["weeks", "By week"], ["days", "By day"]].forEach(function (m) {
+      var b = el("button", "seg-btn" + (statMode === m[0] ? " on" : ""), m[1]);
+      b.type = "button";
+      b.setAttribute("role", "tab");
+      b.setAttribute("aria-selected", statMode === m[0] ? "true" : "false");
+      b.addEventListener("click", function () { statMode = m[0]; renderProgress(); });
+      seg.appendChild(b);
+    });
+    body.appendChild(seg);
+
+    if (statMode === "days") { renderDayStats(body); return; }
+
     body.appendChild(el("p", "prog-section-label", "Hours tracked · last 8 weeks"));
     var series = weeklyHoursSeries(8);
     var max = series.reduce(function (m, w) { return Math.max(m, w.seconds); }, 1);
     var chart = el("div", "stat-bars");
-    series.forEach(function (w, idx) {
-      var col = el("div", "stat-bar");
-      var bar = el("div", "col" + (w.seconds === 0 ? " dim" : ""));
-      bar.style.height = Math.max(2, Math.round((w.seconds / max) * 100)) + "%";
-      col.appendChild(el("div", "val", w.seconds > 0 ? fmtShort(w.seconds) : ""));
-      col.appendChild(bar);
-      col.appendChild(el("div", "cap", (w.monday.getMonth() + 1) + "/" + w.monday.getDate()));
-      chart.appendChild(col);
+    var todayKey = dayKeyOf(new Date());
+    series.forEach(function (w) {
+      var mk = weekKey(w.monday);
+      chart.appendChild(statColumn(w.seconds, max, (w.monday.getMonth() + 1) + "/" + w.monday.getDate(), {
+        label: "Week of " + weekRangeFromKey(mk) + ", " + fmtShort(w.seconds) + ". Show days.",
+        onClick: function () {
+          // Open that week day by day, on its last day (or today, for this week).
+          var sunday = shiftDayKey(mk, 6);
+          progDayKey = sunday > todayKey ? todayKey : sunday;
+          statMode = "days";
+          renderProgress();
+        }
+      }));
     });
     body.appendChild(chart);
+    body.appendChild(el("p", "day-hint", "Tap a week to compare its days."));
 
     var table = el("table", "stat-table");
     var thead = el("tr");
@@ -4088,25 +4444,75 @@
     });
     body.appendChild(table);
   }
+  // Stats › By day: the selected day's week as seven bars, then that day's breakdown.
+  function renderDayStats(body) {
+    var todayKey = dayKeyOf(new Date());
+    var mk = weekKey(dateOfKey(progDayKey));
+    var curWeek = weekKey(new Date());
+    var wnav = el("div", "prog-weeknav");
+    var wPrev = navButton("M15 18 9 12l6-6", function () { progDayKey = shiftDayKey(progDayKey, -7); renderProgress(); });
+    var rng = el("div", "rng", weekRangeFromKey(mk) + (mk === curWeek ? " (this week)" : ""));
+    var wNext = navButton("m9 18 6-6-6-6", function () {
+      var n = shiftDayKey(progDayKey, 7);
+      progDayKey = n > todayKey ? todayKey : n;
+      renderProgress();
+    });
+    if (mk === curWeek) wNext.disabled = true;
+    wnav.appendChild(wPrev); wnav.appendChild(rng); wnav.appendChild(wNext);
+    body.appendChild(wnav);
+
+    var days = [], weekSum = 0;
+    for (var i = 0; i < 7; i++) {
+      var dk = shiftDayKey(mk, i);
+      var secs = dk > todayKey ? 0 : dayTotal(dk);
+      weekSum += secs;
+      days.push({ key: dk, secs: secs, future: dk > todayKey });
+    }
+    var max = days.reduce(function (m, d) { return Math.max(m, d.secs); }, 1);
+    var chart = el("div", "stat-bars days");
+    var names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    days.forEach(function (d, idx) {
+      var dt = dateOfKey(d.key);
+      chart.appendChild(statColumn(d.secs, max, [names[idx], String(dt.getDate())], {
+        selected: d.key === progDayKey,
+        label: dt.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) + ", " + fmtShort(d.secs),
+        onClick: d.future ? null : function () { progDayKey = d.key; renderProgress(); }
+      }));
+    });
+    body.appendChild(chart);
+    var wk = el("p", "day-hint", "Week total: " + fmtShort(weekSum) + " · tap a day for its breakdown.");
+    body.appendChild(wk);
+
+    var dlab = el("p", "prog-section-label", "Day breakdown");
+    dlab.style.marginTop = "16px";
+    body.appendChild(dlab);
+    body.appendChild(buildDayDetail(progDayKey, function (dk) {
+      progDayKey = dk > todayKey ? todayKey : dk;
+      renderProgress();
+    }));
+  }
 
   document.getElementById("progress-btn").addEventListener("click", function () {
     progWeekKey = weekKey(new Date());
     progMonth = new Date();
     progMonth = new Date(progMonth.getFullYear(), progMonth.getMonth(), 1);
+    progDayKey = dayKeyOf(new Date());
     progView = "overview";
+    statMode = "weeks";
     renderProgress();
     document.getElementById("progress-overlay").hidden = false;
   });
   function closeProgress() { document.getElementById("progress-overlay").hidden = true; }
   document.getElementById("progress-close").addEventListener("click", closeProgress);
-  document.getElementById("progress-overlay").addEventListener("click", function (ev) {
-    if (ev.target === this) closeProgress();
-  });
+  onBackdropClick(document.getElementById("progress-overlay"), closeProgress);
 
   // ══ Pomodoro ══
+  // A block never advances on its own. When it runs out it's announced (glow + beeps),
+  // then keeps counting up as "extra" time — extra focus still counts toward the goal —
+  // until you press Take a break / Focus, or end the session.
   var pomoTargetId = null, pomoHasTotal = false;
-  var pomoAnnouncing = false;         // true while the BREAK/FOCUS word is on screen
   var ANNOUNCE_SKIP_MS = 8000;        // if we overshot by more than this (backgrounded), switch silently
+  var POMO_SUMMARY_MIN = 30;          // seconds; a session started by mistake ends without a summary
 
   function startPomodoro(id, focusSec, breakSec, totalSec) {
     var o = byId(id); if (!o) return;
@@ -4117,7 +4523,8 @@
     state.pomodoro = {
       id: id, focusSec: focusSec, breakSec: breakSec,
       hasTotal: totalSec > 0, totalFocusRemaining: totalSec > 0 ? totalSec : 0,
-      phase: "focus", phaseStartedAt: now, phaseEndsAt: now + focusSec * 1000
+      phase: "focus", phaseStartedAt: now, phaseEndsAt: now + focusSec * 1000,
+      over: false, sessionStart: now, focusDone: 0, breakDone: 0
     };
     save();
     render();
@@ -4128,64 +4535,70 @@
     card.classList.remove("flash"); void card.offsetWidth; card.classList.add("flash");
     setTimeout(function () { card.classList.remove("flash"); }, 1900);
   }
-  function endPomodoro(completed) {
+  // Seconds into the current block (keeps counting past the block's length in extra time).
+  function pomoPhaseElapsed(p, now) { return Math.max(0, ((now || Date.now()) - p.phaseStartedAt) / 1000); }
+  // When the current focus block would use up the session's total focus time (ms), or Infinity.
+  function pomoTotalEndsAt(p) {
+    return (p.hasTotal && p.phase === "focus") ? p.phaseStartedAt + p.totalFocusRemaining * 1000 : Infinity;
+  }
+  // `endAt` (optional) closes the session at an earlier moment than now.
+  function endPomodoro(completed, endAt) {
     var p = state.pomodoro; if (!p) return;
     var o = byId(p.id);
-    if (o && o.running) pauseObjective(o);
+    var stop = Math.min(Date.now(), endAt || Infinity);
+    var spent = Math.max(0, (stop - p.phaseStartedAt) / 1000);
+    var focus = (p.focusDone || 0) + (p.phase === "focus" ? spent : 0);
+    var brk = (p.breakDone || 0) + (p.phase === "break" ? spent : 0);
+    if (o && o.running) pauseObjective(o, stop);
     state.pomodoro = null;
     save();
     render();
-    if (completed) enqueueCelebration({ type: "pomodoro", name: o ? o.name : null });
+    var summary = { focus: focus, brk: brk, total: focus + brk };
+    if (completed) enqueueCelebration({ type: "pomodoro", name: o ? o.name : null, summary: summary });
+    else if (summary.total >= POMO_SUMMARY_MIN) enqueueCelebration({ type: "pomoSummary", name: o ? o.name : null, summary: summary });
   }
-  // Advance pomodoro phases; returns true if it re-rendered.
+  // Leave the finished block for the next one (the Take a break / Focus button).
+  function advancePomodoro() {
+    var p = state.pomodoro; if (!p) return;
+    var o = byId(p.id); if (!o) { endPomodoro(false); return; }
+    var now = Date.now();
+    var spent = pomoPhaseElapsed(p, now);
+    if (p.phase === "focus") {
+      p.focusDone = (p.focusDone || 0) + spent;
+      if (p.hasTotal) p.totalFocusRemaining = Math.max(0, p.totalFocusRemaining - spent);
+      pauseObjective(o);
+      p.phase = "break"; p.phaseEndsAt = now + p.breakSec * 1000;
+    } else {
+      p.breakDone = (p.breakDone || 0) + spent;
+      if (!o.running) { o.running = true; o.startedAt = now; }
+      p.phase = "focus"; p.phaseEndsAt = now + p.focusSec * 1000;
+    }
+    p.phaseStartedAt = now;
+    p.over = false;
+    save();
+    render();
+  }
+  // Watch for the end of a block or of the session; returns true if it re-rendered.
   function pomodoroTick() {
     var p = state.pomodoro; if (!p) return false;
-    if (pomoAnnouncing) return false; // hold while the BREAK/FOCUS word is showing
     var o = byId(p.id);
     if (!o) { state.pomodoro = null; render(); return true; }
     var now = Date.now();
-    if (p.phase === "focus") {
-      if (p.hasTotal && (now - p.phaseStartedAt) / 1000 >= p.totalFocusRemaining) { endPomodoro(true); return true; }
-      if (now >= p.phaseEndsAt) {
-        if (p.hasTotal) p.totalFocusRemaining = Math.max(0, p.totalFocusRemaining - p.focusSec);
-        pauseObjective(o);
-        if (p.hasTotal && p.totalFocusRemaining <= 0) { endPomodoro(true); return true; }
-        if (now - p.phaseEndsAt <= ANNOUNCE_SKIP_MS) {
-          // Announce "BREAK" (glow + beeps); the break timer starts when it finishes.
-          pomoAnnouncing = true;
-          persistLocal(); render();
-          showAnnouncement("Break", { variant: "break" }, function () {
-            var n2 = Date.now();
-            p.phase = "break"; p.phaseStartedAt = n2; p.phaseEndsAt = n2 + p.breakSec * 1000;
-            pomoAnnouncing = false;
-            persistLocal(); render(); flashCard(p.id);
-          });
-        } else {
-          p.phase = "break"; p.phaseStartedAt = now; p.phaseEndsAt = now + p.breakSec * 1000;
-          persistLocal(); render(); flashCard(p.id);
-        }
-        return true;
+    var totalEnd = pomoTotalEndsAt(p);
+    if (now >= totalEnd) { endPomodoro(true, totalEnd); return true; } // total focus used up
+    if (!p.over && now >= p.phaseEndsAt) {
+      p.over = true; // keep counting; the user decides when to move on
+      persistLocal(); render();
+      if (now - p.phaseEndsAt <= ANNOUNCE_SKIP_MS) {
+        var id = p.id;
+        enqueueEvent({
+          kind: "announce",
+          text: p.phase === "focus" ? "Break" : "Focus",
+          variant: p.phase === "focus" ? "break" : null,
+          after: function () { flashCard(id); }
+        });
       }
-    } else {
-      if (now >= p.phaseEndsAt) {
-        if (now - p.phaseEndsAt <= ANNOUNCE_SKIP_MS) {
-          // Announce "FOCUS" (glow + beeps); the focus timer starts when it finishes.
-          pomoAnnouncing = true;
-          persistLocal(); render();
-          showAnnouncement("Focus", {}, function () {
-            var n3 = Date.now();
-            o.running = true; o.startedAt = n3;
-            p.phase = "focus"; p.phaseStartedAt = n3; p.phaseEndsAt = n3 + p.focusSec * 1000;
-            pomoAnnouncing = false;
-            persistLocal(); render(); flashCard(p.id);
-          });
-        } else {
-          o.running = true; o.startedAt = now;
-          p.phase = "focus"; p.phaseStartedAt = now; p.phaseEndsAt = now + p.focusSec * 1000;
-          persistLocal(); render(); flashCard(p.id);
-        }
-        return true;
-      }
+      return true;
     }
     return false;
   }
@@ -4193,6 +4606,7 @@
     card.classList.add("pomo");
     var p = state.pomodoro;
     if (p.phase === "break") card.classList.add("on-break");
+    if (p.over) card.classList.add("pomo-over");
 
     var top = el("div", "top");
     var tw = el("div");
@@ -4213,6 +4627,11 @@
     var main = el("div", "pomo-main");
     main.setAttribute("data-role", "pomo-main");
     card.appendChild(main);
+    if (p.over) {
+      var extra = el("p", "pomo-extra");
+      extra.setAttribute("data-role", "pomo-extra");
+      card.appendChild(extra);
+    }
     if (p.hasTotal) {
       var tot = el("p", "pomo-total");
       tot.setAttribute("data-role", "pomo-total");
@@ -4223,7 +4642,13 @@
     card.appendChild(sl);
 
     var actions = el("div", "actions");
-    var endBtn = el("button", "btn-pause", "End focus");
+    if (p.over) {
+      var nextBtn = el("button", "btn-primary", p.phase === "focus" ? "Take a break" : "Focus");
+      nextBtn.type = "button";
+      nextBtn.addEventListener("click", function () { unlockAudio(); advancePomodoro(); });
+      actions.appendChild(nextBtn);
+    }
+    var endBtn = el("button", p.over ? "btn-secondary" : "btn-pause", "End session");
     endBtn.type = "button";
     endBtn.addEventListener("click", function () { endPomodoro(false); });
     actions.appendChild(endBtn);
@@ -4234,16 +4659,28 @@
   function paintPomodoro(card, o) {
     var p = state.pomodoro; if (!p) return;
     var now = Date.now();
+    var elapsed = pomoPhaseElapsed(p, now);
+    var blockLen = (p.phaseEndsAt - p.phaseStartedAt) / 1000;
     var phaseEl = card.querySelector('[data-role="pomo-phase"]');
     if (phaseEl) {
-      phaseEl.textContent = p.phase === "focus" ? "Focus!" : "Enjoy your break";
-      phaseEl.className = "pomo-phase " + (p.phase === "focus" ? "focus" : "break");
+      phaseEl.textContent = p.over
+        ? (p.phase === "focus" ? "Focus block finished" : "Break finished")
+        : (p.phase === "focus" ? "Focus!" : "Enjoy your break");
+      phaseEl.className = "pomo-phase " + (p.over ? "over" : (p.phase === "focus" ? "focus" : "break"));
     }
     card.classList.toggle("on-break", p.phase === "break");
+    card.classList.toggle("pomo-over", !!p.over);
     var main = card.querySelector('[data-role="pomo-main"]');
-    if (main) main.textContent = fmtClock(Math.max(0, (p.phaseEndsAt - now) / 1000));
+    // Counts down through the block, then up from the block's length (30:00 → 30:01 …).
+    if (main) main.textContent = fmtClock(p.over ? elapsed : Math.max(0, blockLen - elapsed));
+    var extra = card.querySelector('[data-role="pomo-extra"]');
+    if (extra) {
+      extra.textContent = "+" + fmtClock(Math.max(0, elapsed - blockLen)) + (p.phase === "focus"
+        ? " extra focus · still counts toward your goal"
+        : " extra break");
+    }
     if (p.hasTotal) {
-      var left = p.totalFocusRemaining - (p.phase === "focus" ? (now - p.phaseStartedAt) / 1000 : 0);
+      var left = p.totalFocusRemaining - (p.phase === "focus" ? elapsed : 0);
       var tot = card.querySelector('[data-role="pomo-total"]');
       if (tot) { tot.innerHTML = ""; tot.appendChild(el("strong", null, fmtClock(Math.max(0, left)))); tot.appendChild(document.createTextNode(" focus left")); }
     }
@@ -4263,7 +4700,7 @@
   function closePomoSetup() { document.getElementById("pomo-overlay").hidden = true; }
   document.getElementById("pomo-close").addEventListener("click", closePomoSetup);
   document.getElementById("pomo-cancel").addEventListener("click", closePomoSetup);
-  document.getElementById("pomo-overlay").addEventListener("click", function (ev) { if (ev.target === this) closePomoSetup(); });
+  onBackdropClick(document.getElementById("pomo-overlay"), closePomoSetup);
   document.getElementById("pomo-total-toggle").addEventListener("click", function () {
     pomoHasTotal = !pomoHasTotal;
     this.classList.toggle("on", pomoHasTotal);

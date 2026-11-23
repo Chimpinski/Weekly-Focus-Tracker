@@ -11,9 +11,11 @@ A single-file web app for tracking time spent on the objectives you care about, 
 
 | Dark · bar progress | Light · ring progress | Settings · cross-device sync |
 | :---: | :---: | :---: |
-| ![Dashboard in dark mode with linear progress bars, a daily-tagged objective, and a completed goal](docs/preview-dark.png) | ![Dashboard in light mode with circular progress rings and a daily sub-goal](docs/preview-light.png) | ![Settings panel showing the sync code for pairing devices](docs/preview-sync.png) |
+| ![Dashboard in dark mode with linear progress bars, a daily-tagged objective, a limited task's total ring, and a completed goal](docs/preview-dark.png) | ![Dashboard in light mode with circular progress rings and a daily sub-goal](docs/preview-light.png) | ![Settings panel showing the sync code for pairing devices](docs/preview-sync.png) |
+| **Pomodoro · extra time** | **Progress · tap a day** | **Pomodoro · session summary** |
+| ![Full-screen Pomodoro card after the focus block ended, counting extra focus in amber with Take a break and End session buttons](docs/preview-pomodoro.png) | ![Progress view with the monthly activity grid and a selected day's per-goal breakdown](docs/preview-day.png) | ![Session summary popup showing total, focus, and break time and the percentage spent in focus](docs/preview-summary.png) |
 
-Toggle between the two progress styles and light/dark themes from Settings, and pair devices with a sync code.
+Switch progress style and theme in Settings, and pair devices with a sync code. A finished Pomodoro block keeps counting until you move on, and any day in Progress opens its own breakdown.
 
 ## Features
 
@@ -22,9 +24,9 @@ Toggle between the two progress styles and light/dark themes from Settings, and 
 - **Manual logging** — forgot to start the timer? Use **+ Log time** to add (or subtract) hours and minutes by hand.
 - **Live progress** — each objective shows a countdown, percentage of goal, and a bar/ring that turns green at 100%. Keep going past the goal and it flips to a green count-up timer with a **Goal met!** badge.
 - **Weekly summary** — combined time logged vs. planned across your weekly objectives (time past any one goal doesn't inflate the total).
-- **Progress history** — a Progress view to revisit any past week's achievement (total and per-goal), a GitHub-style monthly activity grid, and a stats chart of hours over the last eight weeks. Your work isn't gone when the week resets.
-- **Streaks** — a header flame that lights once you log 15 minutes for the day and grows your day count, with milestone celebrations and an optional "skip weekends" rule.
-- **Pomodoro mode** — start focus/break cycles on any objective with an optional total focus time; only focus blocks count toward your goal.
+- **Progress history** — a Progress view to revisit any past week's achievement (total and per-goal), and a GitHub-style monthly activity grid. **Tap any day** to see its total and how much went to each goal. Stats chart your hours **by week** (last eight weeks) or **by day** (a week's days side by side). Your work isn't gone when the week resets.
+- **Streaks** — a header flame that lights once you log 15 minutes for the day and grows your day count, with milestone celebrations. With the optional "skip weekends" rule, a weekend off never breaks your streak and a weekend you do work still adds to it.
+- **Pomodoro mode** — start focus/break cycles on any objective with an optional total focus time; only focus blocks count toward your goal. When a block ends you get beeps and a glowing cue, but the next block doesn't start on its own: the clock keeps counting **extra time in amber** until you tap **Take a break** or **Focus**. Ending a session shows a **summary**: total, focus, and break time, plus the percentage spent in focus.
 - **Rewarding completions** — a congratulations popup when you finish an objective or your whole week; daily goals glow when hit.
 - **Notifications (off by default)** — an optional daily reminder of the goals you haven't hit yet (one message listing them all), a weekly motivational nudge, a warning if you leave with a timer running, and alerts while you're out of the app when a goal is reached or Pomodoro changes phase. Quiet hours included. See [what reaches you where](#notifications).
 - **Cross-device sync, no account** — create a sync code on one device and enter it on another; both show the same timers (even a running one). The code is the only key to your data, so treat it like a password.

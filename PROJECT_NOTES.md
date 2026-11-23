@@ -6,20 +6,21 @@ A personal time-tracking web app. You define objectives (e.g. "Linear Algebra co
 - **Repo:** https://github.com/Chimpinski/Weekly-Focus-Tracker (public, default branch `main`)
 - **Live PWA:** https://chimpinski.github.io/Weekly-Focus-Tracker/ (GitHub Pages, serves `main` root)
 - **Local working dir:** `C:\Users\alial\OneDrive - UW\Claude`
-- **Current version:** v1.6.0
+- **Current version:** v1.7.0
 - **Git identity:** user "Ali", pushes over HTTPS via Git Credential Manager (already authenticated)
 
 ## Tech stack & structure
 No framework, no build step. Everything is hand-written HTML/CSS/vanilla JS.
 
 - `index.html` — the **entire app** (~4,300 lines): all markup, CSS in one `<style>`, logic in one IIFE `<script>`. This is where ~all work happens.
-- `sw.js` — service worker. **Network-first for the page** (so updates reach installed PWAs), cache-first for assets, plus a `notificationclick` handler that focuses/opens the app. Bump the `CACHE` const (currently `"wft-v10"`) on each release.
+- `sw.js` — service worker. **Network-first for the page** (so updates reach installed PWAs), cache-first for assets, plus a `notificationclick` handler that focuses/opens the app. Bump the `CACHE` const (currently `"wft-v11"`) on each release.
 - `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png` — PWA install assets.
 - `assets/icon.png` — 1024px source icon; CI generates native app icons from it.
 - `capacitor.config.json` — `appId: com.chimpinski.weeklyfocus`, `appName: "Focus Timer"`, `webDir: "www"`, `ios.contentInset: "never"`, `backgroundColor: "#101615"`.
 - `package.json` — version + Capacitor 6 deps (`@capacitor/core`, `@capacitor/ios`, `@capacitor/local-notifications`, `@capacitor/cli`, `@capacitor/assets`).
 - `.github/workflows/build-ipa.yml` — CI that builds the `.ipa` and publishes the release.
-- `README.md`, `CHANGELOG.md`, `docs/preview-*.png` (3 same-size README previews).
+- `README.md`, `CHANGELOG.md`, `docs/preview-*.png` (6 same-size 1760×3360 README previews in a 3×2 table: dark, light, sync, pomodoro, day, summary).
+- `tools/render-previews.js` — regenerates all six previews (headless Edge over the DevTools protocol, seeded demo data, sync calls answered locally). Serve the repo on :4599, then `node tools/render-previews.js` (optionally an out dir and shot names). Shot definitions live in its `SHOTS` table.
 - `.gitignore` — ignores `node_modules/`, `/ios/`, `www/`, `dist/`, `*.ipa`, `.claude/settings.local.json`, `.claude/launch.json`.
 
 ### Data model (all in `localStorage`)
@@ -28,9 +29,11 @@ Main key `weekly-focus-timer-v1` holds one `state` object:
 - `objectives[]`: `{id, name, cadence:"weekly"|"daily", goalSeconds, dailyGoalSeconds, spentSeconds, daySpentSeconds, dayKey, running, startedAt, celebratedWeekly, celebratedDaily, totalGoalSeconds, totalSpentSeconds, celebratedTotal, totalStartKey}`
   - `totalGoalSeconds` (0 = not a limited task), `totalSpentSeconds` = **cumulative** time toward the total (incremented wherever `spentSeconds` is, but **never** reset by the weekly rollover), `celebratedTotal` guards the completion popup, `totalStartKey` = dayKey the total began/was last cleared (shown as "since …").
 - `dailyLog: {dayKey: seconds}` — total tracked per calendar day; powers the month grid, stats, and streak
+- `dayGoals: {dayKey: {objectiveId: secs | [secs, dailyGoalSecs]}}` (v1.7.0) — each objective's slice of a day, for the Progress day breakdown. Compact on purpose (it rides in the synced blob): a bare number, or a pair when the objective had a daily target that day. Written by `addDayGoal` from `recordDaily(start, end, o)` (pause + rollover) and the manual log. Days before v1.7.0 only have `dailyLog`, and the UI shows the difference as "Earlier time (not split by goal)".
+- `goalNames: {objectiveId: name}` — last known name, so a deleted objective still labels its past days.
 - `weekHistory: {mondayKey: {objectives:[{name,goalSeconds,spentSeconds}], goalTotal, spentTotal}}` — snapshot taken at each weekly rollover
 - `excludeWeekends` (bool), `streakMilestone` (highest celebrated), `celebratedWeekTotal` (bool)
-- `pomodoro: null | {id, focusSec, breakSec, hasTotal, totalFocusRemaining, phase, phaseStartedAt, phaseEndsAt}`
+- `pomodoro: null | {id, focusSec, breakSec, hasTotal, totalFocusRemaining, phase, phaseStartedAt, phaseEndsAt, over, sessionStart, focusDone, breakDone}`. `over` = the block has run out and is counting extra time. `focusDone`/`breakDone` = seconds from *completed* blocks, which feed the end-of-session summary. `migrate()` backfills these for a session that was running during the upgrade.
 - `backups: [{ts, dayKey, weight, data}]` — rolling dated snapshots (one/day, cap 14) that **ride along inside the synced state**; `data` is a full state minus its own `backups` (no recursion) and minus the live timer. `lastDestructiveAt` (ms) — set by `markDestructive()` on intentional reductions (delete objective, reset time, subtract, clear total) so those legitimately sync.
 - Separate localStorage key `weekly-focus-timer-lkg` — an on-device **last-known-good** copy (a `snapshotOf(state)`), written on each non-empty `save()` and never downgraded unless the reduction was intentional.
 
@@ -45,12 +48,12 @@ There's a `migrate()` run on load and after adopting synced state that backfills
 - **Weekly summary** that caps each objective at its goal (overflow doesn't inflate the total). Auto weekly reset (Mon) + daily reset (midnight).
 - **Celebrations:** popup on completing an objective or the whole week; daily goals glow instead.
 - **Cross-device sync, no account** (see tradeoffs). **Onboarding** (name + tutorial) and **Settings** (name, theme, progress style, weekend rule, sync).
-- **Progress history:** per-week achievement tracker, GitHub-style monthly activity grid (day shading, selected-week highlight, month nav moves the week), and a **Stats** view (8-week bar chart + table).
-- **Streaks:** header flame (lights after 15 min/day), popup with the week's day circles, milestone celebrations, optional "skip weekends".
-- **Pomodoro mode:** focus/break cycles with optional total focus time; only focus counts toward the goal; completion popup.
+- **Progress history:** per-week achievement tracker, GitHub-style monthly activity grid (day shading, selected-week highlight, month nav moves the week), a **Day breakdown** under the grid (`buildDayDetail`/`dayDataFor`; tap a past day square → `pickDay`, which also moves the week + month; prev/next day arrows), and a **Stats** view with a **By week / By day** toggle (`statMode`). By week = 8-week bar chart + table, and a week bar opens By day for it. By day (`renderDayStats`) = that week's 7 bars + the selected day's breakdown. Breakdown rows show time vs the daily target when there is one, otherwise share of the day. Today includes the live running timer (`dayTotal`).
+- **Streaks:** header flame (lights after 15 min/day), popup with the week's day circles, milestone celebrations, optional "skip weekends". With skip on, `computeStreak` never breaks on a weekend day but **counts** one that earned ≥15 min (v1.7.0; before, weekends were ignored entirely).
+- **Pomodoro mode:** focus/break cycles with optional total focus time; only focus counts toward the goal. **Blocks never auto-advance (v1.7.0).** At `phaseEndsAt`, `pomodoroTick` sets `over` and queues the same BREAK/FOCUS announcement (`enqueueEvent` with an `after` callback that flashes the card). The clock then counts *up* from the block length in amber (`--over` token, `.pomo-over`) with a "+extra" line. Extra focus keeps the objective running, so it counts toward the goal. **Take a break / Focus** call `advancePomodoro()`, which banks the block's real elapsed time into `focusDone`/`breakDone`/`totalFocusRemaining`. `endPomodoro(completed, endAt)` shows a summary popup (type `pomodoro` when the total is used up, `pomoSummary` on manual end; skipped under 30s) with total/focus/break and focus %. When the total runs out in the background, `endAt` = the exact moment it ran out, and `pauseObjective(o, endMs)` stops crediting at that moment.
 - **Total objective time (limited tasks):** optional `totalGoalSeconds`; right-side `.total-panel` on the card with a small full-circle ring (`TR_R`/`TR_C`, % inside) + "Xh left / of Yh / since …"; completion fires a **"Task complete"** announcement then a congrats popup (`#total-overlay`) with **Clear & start fresh** (commits time, zeros the total, restarts `totalStartKey` today).
 - **Full-screen task view:** per-card expand button toggles `fullscreenId`; `render()` shows only that card and sets `body.fs-mode`, which hides header/summary/footer/FAB and enlarges the card (works for normal and pomodoro cards). Exit via the button or Escape.
-- **Sound + announcements:** synthesized **WebAudio** stopwatch beeps (`playStopwatchBeeps` — 2 beeps × 3, no asset files) plus a full-screen glowing word (`#announce-overlay`, `showAnnouncement`). Pomodoro focus↔break shows **BREAK/FOCUS** for ~2.4s (via `pomoAnnouncing` guard) before the next block starts; daily/weekly goals and total completion announce without stopping a running timer. Celebrations now run through one sequential `eventQueue` (`enqueueAnnounce`/`enqueueCelebration`/`enqueueTotalComplete`). Audio is unlocked on first gesture (`unlockAudio`).
+- **Sound + announcements:** synthesized **WebAudio** stopwatch beeps (`playStopwatchBeeps` — 2 beeps × 3, no asset files) plus a full-screen glowing word (`#announce-overlay`, `showAnnouncement`). Pomodoro block ends show **BREAK/FOCUS** for ~2.4s while the clock keeps running (no hold; the next block waits for the user); daily/weekly goals and total completion announce without stopping a running timer. Celebrations now run through one sequential `eventQueue` (`enqueueAnnounce`/`enqueueCelebration`/`enqueueTotalComplete`). Audio is unlocked on first gesture (`unlockAudio`).
 - **Notifications (v1.6.0, off by default):** Settings › Notifications has a master switch, four category switches (daily goal reminder / weekly nudge / forgot-to-pause / away alerts) and a quiet-hours window. See the section under Key decisions for how it's built and what each platform can actually deliver.
 - **Backups & restore (Settings):** `#restore-overlay` lists restore points (on-device LKG + in-state snapshots) with dates + a `summarizeSnap` line; two-tap confirm restores via `restoreSnapshot` (bumps `updatedAt` so the restore wins sync). "Back up now" forces a snapshot. See the sync hardening under Key decisions.
 
@@ -73,17 +76,21 @@ There's a `migrate()` run on load and after adopting synced state that backfills
   - **Details that matter:** the daily reminder pre-schedules 7 days ahead with a fresh random time per day inside the quiet window, and future days get generic text (you can't know then what'll be outstanding — opening the app that day rewrites it with the real list); goal "left" figures round up via `fmtShort(Math.max(60, secs))` or a nearly-done goal reads "0m left"; forgot-to-pause must **not** fire during a Pomodoro (it pauses itself); on iOS web it's sent as you leave, rate-limited once per run via `pingedRun` keyed on `startedAt`, or deliberately tracking time in another app pings on every app switch; the weekly nudge body reuses `QUOTES`.
   - **Delivery is honestly stated** in Settings (`notifySupportLine()`), the README, and CHANGELOG — it differs a lot between the `.ipa`, an iOS home-screen PWA, and a desktop browser.
 - iOS full-bleed handled via `viewport-fit=cover` + safe-area insets; inputs are 16px and zoom is disabled so iOS doesn't zoom on focus.
+- **Full-screen sizing (v1.7.0):** `body.fs-mode .card` is a size container (`container-type: inline-size`). Big readouts use `min(cap, Ncqi, Mvh)`, with a `calc((100vw - 100px) / 4.6)` fallback declared first for engines without container units. A monospace `0:30:00` is ~4.1–4.3em wide, so ≤22cqi always fits. `@media (max-height: 520px)` compacts the layout for landscape phones. `overflow: hidden` was removed from `body.fs-mode`, because on short screens it made the buttons unreachable. Verified with an overflow sweep at 320×568, 740×360, 768×1024 and desktop. At ≤420px wide the limited-task `.total-panel` stacks under the timer instead of beside it.
+- **Backdrop clicks go through `onBackdropClick(node, close)`**, which closes only if the press *started* on the backdrop. A text selection dragged out of a dialog fires `click` on the backdrop too. Use it for any new modal.
+- **Rolling backups omit `dayGoals`/`goalNames`** (`makeSnap`): there are up to 14 of them inside the synced blob, so the per-goal log would be multiplied 15×. `restoreSnapshot` keeps the current `dayGoals` when the snapshot has none. The on-device LKG still holds a full copy.
+- **Sync code copy/paste:** Copy puts only the 12-char body on the clipboard (every code field shows `WFT-` as a fixed label). `formatCodeBody` strips a leading `WFT` when a pasted value has more than 12 characters.
 
 ## Known issues / unfinished
-- README `docs/preview-*.png` predate the streak/progress header buttons — slightly stale; regenerate when convenient.
-- `dailyLog`/`weekHistory` grow unbounded (tiny for personal use; never pruned).
+- `dailyLog`/`weekHistory`/`dayGoals` grow unbounded (never pruned). Roughly 100 bytes/day for `dayGoals` with a few goals. Fine for personal use, but worth pruning (e.g. keep a year) if the synced blob ever approaches a textdb size limit.
+- Pomodoro extra focus counts toward the goal until the user acts. If they walk away after a focus block ends, it keeps counting, and forgot-to-pause stays silent during a Pomodoro. The block-end notification is the only nudge.
 - Sync is last-write-wins for *genuine* concurrent edits — two devices editing different things offline can still lose one side's changes on next sync (the v1.5.0 guards only protect against wipes/regressions, not legitimate divergent edits).
 - textdb.online retention is not guaranteed — but a lost/reset server value can no longer wipe devices (guarded), and any device with data re-seeds it. Full local copies + backups remain the safety net.
 - All minute inputs now step by 1 (as of v1.4.0; previously log/goal/pomodoro-focus minutes were constrained to multiples of 5). Any whole number is accepted.
 - The total panel is hidden while an objective is in Pomodoro mode (the pomodoro card is its own focused layout); it returns when the pomodoro ends.
 
 ## Environment note for verification
-In this environment the **in-app browser-pane screenshot tool times out** — don't rely on it. Verify functionally via JS eval / DOM inspection, and for **visual** checks use **headless Edge** (this works):
+The in-app browser pane worked for v1.7.0 (screenshots, clicks, `resize_window` for viewport sweeps), though it has timed out in earlier sessions. If it does, use the fallbacks below. Verify functionally via JS eval / DOM inspection, and for **visual** checks use **headless Edge** (this works):
 `"/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" --headless=new --disable-gpu --no-sandbox --no-first-run --user-data-dir=<fresh temp profile> --hide-scrollbars --force-device-scale-factor=2 --virtual-time-budget=2500 --window-size=W,H --screenshot=out.png <url>` — serve the dir with `python -m http.server`, and inject a small seed `<script>` into `<head>` to prime `localStorage`/open a modal for the shot. Poll for the output file (Edge's launcher returns before the render finishes).
 
 ### Driving the app in a real browser (used for the v1.6.0 notification tests)
@@ -109,7 +116,7 @@ No Playwright/Puppeteer browsers are installed, but `npm i puppeteer-core` in a 
 ## Updating GitHub after a build (exact)
 - **Branch:** always `main`. Only source is committed; `node_modules/ios/www/dist/*.ipa` are gitignored. The `.ipa` is **not** committed — it lives only as a Release asset.
 - **Commit style:** subject `vX.Y.Z: short summary` for releases (or an imperative line for fixes), a bulleted body, and always the footer:
-  `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`
+  `Co-Authored-By: Claude <model> <noreply@anthropic.com>` (whichever model made the change; the owner doesn't mind the exact string)
 - **Releases are tagged.** Cutting a version:
   1. Add a `## [X.Y.Z] - YYYY-MM-DD` section at the top of `CHANGELOG.md` (under _Unreleased_) and update the compare/link lines at the bottom.
   2. Bump `package.json` version, `sw.js` `CACHE` (→ `wft-vN+1`), and the workflow's fallback `MV` default.
