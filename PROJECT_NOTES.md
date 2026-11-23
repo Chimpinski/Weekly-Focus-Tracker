@@ -6,14 +6,14 @@ A personal time-tracking web app. You define objectives (e.g. "Linear Algebra co
 - **Repo:** https://github.com/Chimpinski/Weekly-Focus-Tracker (public, default branch `main`)
 - **Live PWA:** https://chimpinski.github.io/Weekly-Focus-Tracker/ (GitHub Pages, serves `main` root)
 - **Local working dir:** `C:\Users\alial\OneDrive - UW\Claude`
-- **Current version:** v1.7.0
+- **Current version:** v1.7.1 (v1.7.0 tag exists but has no release — its build hit the retired macos-14 image)
 - **Git identity:** user "Ali", pushes over HTTPS via Git Credential Manager (already authenticated)
 
 ## Tech stack & structure
 No framework, no build step. Everything is hand-written HTML/CSS/vanilla JS.
 
 - `index.html` — the **entire app** (~4,300 lines): all markup, CSS in one `<style>`, logic in one IIFE `<script>`. This is where ~all work happens.
-- `sw.js` — service worker. **Network-first for the page** (so updates reach installed PWAs), cache-first for assets, plus a `notificationclick` handler that focuses/opens the app. Bump the `CACHE` const (currently `"wft-v11"`) on each release.
+- `sw.js` — service worker. **Network-first for the page** (so updates reach installed PWAs), cache-first for assets, plus a `notificationclick` handler that focuses/opens the app. Bump the `CACHE` const (currently `"wft-v12"`) on each release.
 - `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png` — PWA install assets.
 - `assets/icon.png` — 1024px source icon; CI generates native app icons from it.
 - `capacitor.config.json` — `appId: com.chimpinski.weeklyfocus`, `appName: "Focus Timer"`, `webDir: "www"`, `ios.contentInset: "never"`, `backgroundColor: "#101615"`.

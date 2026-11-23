@@ -12,6 +12,11 @@ project uses [semantic versioning](https://semver.org/).
 
 _Nothing yet._
 
+## [1.7.1] - 2026-11-22
+
+### Fixed
+- **The iPhone app (`.ipa`) builds again.** GitHub retired the build machine the 1.7.0 build was set to use, so that release never got its `.ipa`. This release ships it. The app itself is the same as 1.7.0; see below for everything new.
+
 ## [1.7.0] - 2026-11-22
 
 ### Added
@@ -154,7 +159,8 @@ On iPhone the web app must be **added to the Home Screen** (iOS 16.4+) to have n
 - Installable PWA (web manifest, app icons, offline service worker).
 - An unsigned `.ipa` attached to the release for personal sideloading.
 
-[Unreleased]: https://github.com/Chimpinski/Weekly-Focus-Tracker/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/Chimpinski/Weekly-Focus-Tracker/compare/v1.7.1...HEAD
+[1.7.1]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.7.1
 [1.7.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.7.0
 [1.6.0]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.6.0
 [1.5.1]: https://github.com/Chimpinski/Weekly-Focus-Tracker/releases/tag/v1.5.1
